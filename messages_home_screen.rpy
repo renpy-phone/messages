@@ -34,7 +34,7 @@ screen base_phone(background="phone_screen"):
         action Phone.get_exit_actions()
 
 
-screen messenger_home():
+screen messages_home():
     tag phone_tag
     modal True
 
