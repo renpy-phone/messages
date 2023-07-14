@@ -1,12 +1,12 @@
 from IContact_ren import IContact
-from MessengerService_ren import MessengerService
+from MessagesService_ren import MessagesService
 
 """renpy
 init python:
 """
 
 
-class Messenger:
+class Messages:
     def __init__(self) -> None:
         self.name: str = "Messenger"
         self.home_screen = "messenger_home"
@@ -25,7 +25,7 @@ class Messenger:
 
     @property
     def notification(self) -> bool:
-        return any(MessengerService.has_replies(contact) for contact in self.contacts)
+        return any(MessagesService.has_replies(contact) for contact in self.contacts)
 
     def move_contact_to_top(self, contact: "IContact") -> None:
         try:
@@ -34,4 +34,4 @@ class Messenger:
             self.contacts.insert(0, contact)
 
 
-messenger: Messenger
+messages: Messages

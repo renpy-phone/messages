@@ -1,8 +1,8 @@
 from IContact_ren import IContact
 from Message_ren import Message
 from Reply_ren import Reply
-from Messenger_ren import messenger
-from MessengerService_ren import MessengerService
+from Messages_ren import messages
+from MessagesService_ren import MessagesService
 
 SetVariable: Callable[[str, Any], Any]
 
@@ -28,7 +28,7 @@ class MessageBuilder:
         self.current_message = Message(self.contact, content, replies)
         self.message_queue.append(self.current_message)
 
-        messenger.move_contact_to_top(self.contact)
+        messages.move_contact_to_top(self.contact)
 
         return self
 
@@ -70,4 +70,4 @@ class MessageBuilder:
         self.contact.pending_text_messages[:0] = self.message_queue
         self.message_queue.clear()
 
-        MessengerService.send_next_messages(self.contact)
+        MessagesService.send_next_messages(self.contact)
