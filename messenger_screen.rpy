@@ -1,3 +1,39 @@
+screen base_phone(background="phone_screen"):
+    modal True
+
+    add "darker_80"
+
+    # Click background to close phone
+    button:
+        action Phone.get_exit_actions()
+
+    textbutton _("Exit Phone"):
+        style "phonebutton"
+        action Phone.get_exit_actions()
+
+    frame:
+        modal True
+        background background
+        align (0.5, 0.5)
+        xysize (433, 918)
+
+        transclude
+
+        if not renpy.get_screen("phone"):
+            fixed:
+                ysize 69
+                ypos 843
+
+                imagebutton:
+                    idle "phone_home_button_idle"
+                    hover "phone_home_button_hover"
+                    action [Hide("message_reply"), Show("phone")]
+                    align (0.5, 0.5)
+
+    key [ "K_ESCAPE", "K_MENU", "K_PAUSE", "mouseup_3" ]:
+        action Phone.get_exit_actions()
+
+
 screen messenger(contact=None):
     tag phone_tag
     modal True
