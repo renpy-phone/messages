@@ -152,14 +152,14 @@ label test_core_clock_ticks:
 
 label test_core_memo_cache:
     python:
-        a = phone.rounded("accent", "md")
-        b = phone.rounded("accent", "md")
-        expect(a is b, "rounded() is cached")
+        a = phone.cover("images/demo/beach.png", 40, 40)
+        b = phone.cover("images/demo/beach.png", 40, 40)
+        expect(a is b, "cover() is cached")
         c = phone.avatar("test_contact", 40)
         phone.rename_contact("test_contact", "Zed")
         d = phone.avatar("test_contact", 40)
         expect(c is not d, "avatar cache follows contact changes")
         phone.set_theme("dark")
-        expect(phone.rounded("accent", "md") is not a, "cache is per theme")
+        expect(phone.cover("images/demo/beach.png", 40, 40) is not a, "cache is per theme")
         phone.set_theme("light")
     return

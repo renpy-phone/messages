@@ -48,12 +48,6 @@ def color(key):
     return cfg.themes["light"].get(key, "#f0f")
 
 
-def tinted(image, key_or_color):
-    """A white placeholder image tinted to a theme key or explicit color."""
-    c = color(key_or_color) if not key_or_color.startswith("#") else key_or_color
-    return store.Transform(image, matrixcolor=store.TintMatrix(c))
-
-
 def run_effects(effects):
     """Runs a list of Ren'Py actions (SetVariable, Function, Jump, ...)."""
     for effect in effects or ():

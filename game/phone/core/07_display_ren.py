@@ -6,13 +6,6 @@ init -930 python in phone:
 
 from store import AlphaMask, Fixed, Frame, Solid, Text, Transform
 
-GLYPH_FONT = "DejaVuSans.ttf"  # ships with Ren'Py, has the symbols we use
-
-# Symbols that render as plain glyphs in DejaVu Sans. Many others (such as
-# the envelope, gear, black telephone or left-pointing triangle) are drawn as
-# color emoji by Ren'Py 8.2+, so App.glyph should come from this set:
-#   ❝ ◉ ✆ ☏ ✱ ◐ ✎ ♡ ❖ ⌂ ▣ ▦ ◈ ✦ ☰ ≡ ♫ ⚑ ⊙ ✚ ‹ › ○ ● ✕
-
 # Screens are re-evaluated on every interaction, so rebuilding avatars, icons
 # and cropped images each time adds up with long chat logs and feeds. Builders
 # below cache their result on everything it depends on. Not saved.
@@ -39,31 +32,6 @@ def memoized(fn):
     wrapper.__module__ = fn.__module__
     wrapper.__doc__ = fn.__doc__
     return wrapper
-
-
-# Folder holding the framework images, relative to the game directory.
-asset_dir = "phone/images/"
-
-
-def asset(name):
-    return asset_dir + name
-
-
-@memoized
-def rounded(key_or_color, radius="md"):
-    """A rounded rectangle Frame in a theme color. radius: "sm", "md" or "lg"."""
-    image, border = {
-        "sm": ("round_8.png", 8),
-        "md": ("round_18.png", 18),
-        "lg": ("round_48.png", 48),
-    }[radius]
-    scale = px(1000) / 1000.0
-    return Frame(Transform(tinted(asset(image), key_or_color), zoom=scale), px(border), px(border))
-
-
-@memoized
-def circle(key_or_color, size):
-    return Transform(tinted(asset("circle.png"), key_or_color), xysize=(size, size))
 
 
 @memoized

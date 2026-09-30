@@ -20,9 +20,6 @@ style phone_default:
 
 style phone_text is phone_default
 
-style phone_glyph is phone_default:
-    font phone.GLYPH_FONT
-
 style phone_title is phone_default:
     size phone.text_px(26)
     bold True
