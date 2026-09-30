@@ -15,25 +15,42 @@ init -920 python in phone:
 #
 #     $ phone.missed_call("lucy")
 #
-# Call labels given to incoming_call() and Contact(call_label=...) run in a
-# nested context, like Ren'Py's own menus: when the label returns, the story
-# carries on exactly where it was (after the incoming_call() statement, or
-# with the phone still open on the Recents tab after the player phoned
-# someone). Variables changed by the label are kept; images it shows are
-# discarded when the call ends. As in any nested context, rollback is not
-# available inside such a call, and a save made during it is a save of the
-# top-level story: loading it goes back to the statement the call started
-# from (the ringing, or the phone before the player dialed).
-# A call label must end with `return`.
+# Call labels (the `label` of incoming_call() and Contact(call_label=...))
+# run in the main story context through the `phone_calls_session` label, so
+# rollback and saving work inside a call: a save made mid-call loads back
+# into the call label with the in-call pill on screen. A call label must end
+# with `return`.
 #
-# Calls started without a label (incoming_call() without `label`, or
-# start_call()) run in the story itself, so rollback and saving work as
-# usual; end them with phone.end_call().
+# - incoming_call(who, label=...) ends its statement with renpy.call(): when
+#   the call label returns, the story continues with the statement after the
+#   `$ phone.incoming_call(...)`. (Use it as a `$` statement; the return value
+#   is only meaningful without `label` and `decline_label`.)
+# - When the player phones a contact from the app, the call label is called
+#   with from_current=True, so the statement that was running when the player
+#   dialed runs again once the call is over:
+#     * phone.open(...): the phone closes for the call, then that statement
+#       reopens it, on the Recents tab (see phone.open_next()); the story goes
+#       on when the player closes it.
+#     * phone.show(...) during a say statement: the phone closes for the call,
+#       is shown again on the Recents tab afterwards, and the interrupted line
+#       of dialogue is displayed again.
+#
+# Calls without a label (incoming_call() without `label`, or start_call())
+# just stay active while the script goes on; end them with phone.end_call().
 
 import time as _calls_time
 
 cfg.sounds.setdefault("ringtone", None)  # loops while an incoming call rings
 cfg.sounds.setdefault("dialing", None)  # played when the player places a call
+
+# The in-call pill follows phone.calls_state.active, so it is back after a
+# load or a rollback without anything showing it again.
+if "phone_calls_active" not in store.config.overlay_screens:
+    store.config.overlay_screens.append("phone_calls_active")
+
+# Call screens get a dark background behind the status and nav bars too.
+for _calls_screen in ("phone_calls_incoming", "phone_calls_outgoing"):
+    set_screen_background(_calls_screen, "call_bg")
 
 # The call screens are dark in both themes, like a real phone.
 for _k, _v in (("call_bg", "#14161b"), ("call_text", "#ffffff"), ("call_subtext", "#b8bcc6")):
@@ -252,7 +269,6 @@ def active_call():
 
 def _begin_call(key, uid, label=False):
     calls_state.active = ActiveCall(key, uid, label)
-    renpy.show_screen("phone_calls_active", _layer=cfg.layer, _zorder=cfg.zorder - 1)
 
 
 def start_call(who):
@@ -283,8 +299,6 @@ def end_call(duration=None):
             duration = format_duration(_calls_time.time() - a.started)
         rec.duration = duration
     calls_state.active = None
-    if renpy.get_screen("phone_calls_active", layer=cfg.layer) is not None:
-        renpy.hide_screen("phone_calls_active", layer=cfg.layer)
 
 
 def _calls_after_load():
@@ -303,25 +317,14 @@ def _call_timer_text(st, at):
     return Text(format_duration(st), style="phone_calls_active_timer"), 1.0 - (st % 1.0)
 
 
-def _nested(label, *args):
-    """Runs a call label in a nested context and returns when it does."""
-    global _called
-    # The phone may be waiting in phone.open() outside; inside the call it
-    # starts closed, and phone.Close() there must only hide it.
-    saved = _called
-    _called = False
-    try:
-        renpy.call_in_new_context(label, *args)
-    finally:
-        _called = saved
-
-
-def _run_call_label(key, uid, label):
-    try:
-        _nested("phone_calls_session", key, uid, label)
-    finally:
-        if in_call():
-            end_call()
+def _session_end(reopen=None):
+    """End of phone_calls_session: ends the call, then brings the phone back."""
+    end_call()
+    if reopen == "open":
+        # The phone.open() statement runs again; show Recents this time.
+        open_next("calls")
+    elif reopen == "show":
+        show("calls")
 
 
 # Ringing --------------------------------------------------------------------
@@ -341,17 +344,21 @@ def incoming_call(who, label=None, decline_label=None, can_decline=True, ring=Tr
     """Rings the phone and waits for the player to answer or decline.
 
     `label`
-        Called when the player answers; the call ends when it returns.
-        Without it the call stays active, so the script can go on with the
-        conversation and then `$ phone.end_call()`.
+        Called when the player answers, with the in-call pill on screen; the
+        call ends when it returns, and the story continues after this
+        statement. Without it the call stays active, so the script can go on
+        with the conversation and then `$ phone.end_call()`.
     `decline_label`
-        Called when the player declines.
+        Called when the player declines; the story continues after this
+        statement when it returns.
     `can_decline`
         False hides the decline button.
     `ring`
         False keeps the ringtone (cfg.sounds["ringtone"]) silent.
 
-    Returns True if the player answered.
+    Returns True if the player answered, False if they declined. When a
+    label is called this function does not return, so only rely on the
+    value when neither `label` nor `decline_label` is given.
     """
     global _called
 
@@ -394,15 +401,15 @@ def incoming_call(who, label=None, decline_label=None, can_decline=True, ring=Tr
 
     if result == "accept":
         rec = log_call(key, "incoming")
-        if label:
-            _run_call_label(key, rec.uid, label)
-        else:
-            _begin_call(key, rec.uid)
+        if label and renpy.has_label(label):
+            # Ends this statement; the story resumes after it.
+            renpy.call("phone_calls_session", key, rec.uid, label)
+        _begin_call(key, rec.uid)
         return True
 
     log_call(key, "declined")
-    if decline_label:
-        _nested(decline_label)
+    if decline_label and renpy.has_label(decline_label):
+        renpy.call(decline_label)
     return False
 
 
@@ -416,17 +423,24 @@ def dial(who):
     """The player phones `who` (a contact or a number).
 
     If the contact has a call label (Contact.call_label, or one set with
-    phone.set_call_label), it runs with the in-call overlay and the phone
-    then shows the Recents tab. Otherwise the phone shows a call that is not
-    answered. Meant to be run from the phone (see phone.CallContact).
+    phone.set_call_label), it is called through phone_calls_session; this
+    ends the current statement (see the notes at the top of this file).
+    Otherwise the phone shows a call that is not answered.
     """
     key = caller_key(who)
     label = contact(key).label if is_contact_key(key) else None
     rec = log_call(key, "outgoing")
     play_sound("dialing")
     if label and renpy.has_label(label):
-        _run_call_label(key, rec.uid, label)
-        state.launch("calls")
+        if _called:
+            reopen = "open"
+        elif is_open():
+            reopen = "show"
+        else:
+            reopen = None
+        # From the phone, the interrupted statement runs again after the
+        # call (it reopens the phone). From the script, carry on after it.
+        renpy.call("phone_calls_session", key, rec.uid, label, reopen, from_current=reopen is not None)
     else:
         _outgoing_started[rec.uid] = _calls_time.time()
         state.navigate("phone_calls_outgoing", who=key, uid=rec.uid)
