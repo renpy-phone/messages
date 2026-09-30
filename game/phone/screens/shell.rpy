@@ -135,6 +135,9 @@ screen phone_app_button(app):
             xalign 0.5
             spacing phone.px(6)
 
+            # Room for the badge, which pokes out above the icon.
+            null height phone.px(10)
+
             fixed:
                 xysize (phone.px(72), phone.px(72))
                 xalign 0.5

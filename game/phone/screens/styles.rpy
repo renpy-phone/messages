@@ -74,7 +74,7 @@ style phone_home_clock is phone_default:
 
 style phone_app_button is empty:
     xsize phone.px(100)
-    ysize phone.px(118)
+    ysize phone.px(126)
 
 style phone_app_label is phone_default:
     size phone.px(15)
