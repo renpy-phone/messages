@@ -30,6 +30,14 @@ cfg.messages_typing_delay = 0.8  # seconds per message while a chat is on screen
 cfg.messages_max_rendered = 100  # a conversation screen shows at most this many entries
 cfg.sounds.setdefault("message", None)
 
+require_art(
+    "messages/bubble_in", "messages/bubble_in_tail",
+    "messages/bubble_out", "messages/bubble_out_tail",
+    "messages/typing_dot", "messages/reply", "messages/composer",
+    "messages/thumb_mask", "messages/thumb_mask_small", "messages/group_ring",
+    "messages/back", "common/avatar_mask",
+)
+
 THREAD_SCREEN = "phone_messages_thread"
 
 # Entry kinds.
@@ -133,14 +141,14 @@ def _messages_thread_avatar(tid, size, key):
     if g.avatar is not None:
         return store.AlphaMask(
             cover(g.avatar, size, size),
-            store.Transform(asset("circle.png"), xysize=(size, size)),
+            art("common/avatar_mask", size=(size, size), fit="fill"),
         )
     if len(g.members) >= 2:
         small = int(size * 0.68)
         ring = int(size * 0.72)
         return store.Fixed(
             store.Fixed(avatar(g.members[0], small), xysize=(small, small), xalign=0.0, yalign=0.0),
-            store.Fixed(circle("surface", ring), xysize=(ring, ring), xalign=1.0, yalign=1.0),
+            store.Fixed(art("messages/group_ring", size=(ring, ring), fit="fill"), xysize=(ring, ring), xalign=1.0, yalign=1.0),
             store.Fixed(avatar(g.members[1], small), xysize=(small, small), xalign=1.0, yalign=1.0,
                         xoffset=-(ring - small) // 2, yoffset=-(ring - small) // 2),
             xysize=(size, size),
@@ -564,10 +572,24 @@ def thumbnail(img, width=None, ratio=0.75):
 
 @memoized
 def _messages_thumbnail(img, w, h):
-    return store.AlphaMask(
-        cover(img, w, h),
-        store.Fixed(rounded("#ffffff", "md" if w > px(100) else "sm"), xysize=(w, h)),
-    )
+    if w > px(100):
+        mask = art_frame("messages/thumb_mask", 18)
+    else:
+        mask = art_frame("messages/thumb_mask_small", 8)
+    return store.AlphaMask(cover(img, w, h), store.Fixed(mask, xysize=(w, h)))
+
+
+def bubble_tail(entries, index, typing=False):
+    """True if entries[index] ends a run of bubbles from one sender, so it
+    is drawn with a tail. While someone is typing, the typing bubble takes
+    the tail from the last incoming message."""
+    entry = entries[index]
+    nxt = entries[index + 1] if index + 1 < len(entries) else None
+    if entry.kind == ME:
+        return nxt is None or nxt.kind != ME
+    if nxt is None:
+        return not typing
+    return not nxt.incoming or nxt.sender != entry.sender
 
 
 def _tick(tid):

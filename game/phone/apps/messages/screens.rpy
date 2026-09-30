@@ -1,10 +1,14 @@
 # Screens of the Messages app: the inbox and a conversation.
 
-transform phone_messages_typing_pulse:
+## One dot of the typing indicator; `delay` staggers the three dots.
+transform phone_messages_typing_pulse(delay=0.0):
     alpha 0.3
-    ease 0.45 alpha 1.0
-    ease 0.45 alpha 0.3
-    repeat
+    pause delay
+    block:
+        ease 0.4 alpha 1.0
+        ease 0.4 alpha 0.3
+        pause 0.3
+        repeat
 
 
 ## Inbox: conversations, newest first.
@@ -53,8 +57,9 @@ screen phone_messages_thread(thread):
                     yalign 0.5
                     spacing phone.px(10)
 
-                    textbutton "‹":
+                    imagebutton:
                         style "phone_messages_back"
+                        properties phone.art_states("messages/back", (phone.px(40), phone.px(40)))
                         action phone.Back()
                         alt _("Back")
 
@@ -80,7 +85,7 @@ screen phone_messages_thread(thread):
             frame:
                 style "empty"
                 xfill True
-                padding (phone.px(12), phone.px(14))
+                padding (phone.px(6), phone.px(14))
 
                 vbox:
                     style "phone_messages_log"
@@ -97,21 +102,26 @@ screen phone_messages_thread(thread):
                             null height phone.px(2)
 
                         elif entry.kind == "me":
-                            use phone_messages_bubble(entry, True)
+                            use phone_messages_bubble(entry, True, phone.bubble_tail(entries, i, typing))
 
                         else:
                             if is_group and (prev is None or prev.sender != entry.sender or not prev.incoming):
                                 text phone.sender_name(entry.sender):
                                     style "phone_messages_sender"
                                     color phone.contact(entry.sender).tint()
-                                    xoffset phone.px(10)
+                                    xoffset phone.px(16)
                                     substitute False
-                            use phone_messages_bubble(entry, False)
+                            use phone_messages_bubble(entry, False, phone.bubble_tail(entries, i, typing))
 
                     if typing:
                         frame:
-                            style "phone_messages_bubble_in"
-                            text "• • •" style "phone_messages_typing_text" at phone_messages_typing_pulse
+                            style "phone_messages_bubble_in_tail"
+                            hbox:
+                                style "phone_messages_typing"
+                                for k in range(3):
+                                    add phone.art("messages/typing_dot", size=(phone.px(10), phone.px(10))):
+                                        yalign 0.5
+                                        at phone_messages_typing_pulse(k * 0.15)
 
         # Reply options, or an idle composer bar.
         frame:
@@ -139,18 +149,20 @@ screen phone_messages_thread(thread):
                     text (_("Typing…") if typing else _("Message")) style "phone_messages_composer_text"
 
 
-## A message bubble: incoming on the left, the player's on the right.
-screen phone_messages_bubble(entry, out):
+## A message bubble: incoming on the left, the player's on the right. The
+## last bubble of a run from one sender has a tail.
+screen phone_messages_bubble(entry, out, tail=False):
     frame:
-        style ("phone_messages_bubble_out" if out else "phone_messages_bubble_in")
+        style "phone_messages_bubble_{}{}".format("out" if out else "in", "_tail" if tail else "")
 
         if entry.image is not None:
+            # The bubble art has an 8px gutter on the sender's side.
             if entry.text:
-                padding (phone.px(4), phone.px(4), phone.px(4), phone.px(10))
+                padding ((phone.px(4), phone.px(4), phone.px(12), phone.px(10)) if out else (phone.px(12), phone.px(4), phone.px(4), phone.px(10)))
             else:
                 # A picture on its own needs no bubble around it.
                 background None
-                padding (0, 0)
+                padding ((0, 0, phone.px(8), 0) if out else (phone.px(8), 0, 0, 0))
             vbox:
                 spacing phone.px(6)
                 button:

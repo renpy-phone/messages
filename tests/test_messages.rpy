@@ -27,6 +27,15 @@ init python:
     def _tmsg_uids(who):
         return [o.uid for o in phone.reply_options(who)]
 
+    def _tmsg_hover(action_type):
+        """Moves the mouse over the first shown button whose action is an
+        `action_type`, so the next shot shows its hover state."""
+        for f in renpy.display.focus.focus_list:
+            if isinstance(getattr(f.widget, "action", None), action_type) and f.x is not None:
+                renpy.set_mouse_pos(int(f.x + f.w / 2), int(f.y + f.h / 2))
+                return True
+        return False
+
 screen _tmsg_closer(delay=0.5):
     timer delay action [Hide("_tmsg_closer"), phone.Close()]
 
@@ -346,6 +355,9 @@ label test_messages_screens:
     $ shot("messages-inbox")
     $ phone.MessagesOpen("_tmsg_ann")()
     $ shot("messages-thread-choice")
+    $ expect(_tmsg_hover(phone.MessagesChoose), "reply options are buttons")
+    $ shot("messages-reply-hover")
+    $ renpy.set_mouse_pos(0, 0)
     $ phone.MessagesOpen("_tmsg_crew")()
     $ shot("messages-group")
     $ phone.Navigate("phone_image_viewer", image="demo photo city")()
@@ -364,6 +376,11 @@ label test_messages_screens:
     $ shot("messages-inbox-dark")
     $ phone.MessagesOpen("_tmsg_ann")()
     $ shot("messages-thread-dark")
+    $ _tmsg_hover(phone.MessagesChoose)
+    $ shot("messages-reply-hover-dark")
+    $ _tmsg_hover(phone.Back)
+    $ shot("messages-back-hover-dark")
+    $ renpy.set_mouse_pos(0, 0)
     $ phone.Back()()
     $ phone.MessagesOpen("_tmsg_crew")()
     $ shot("messages-group-dark")
@@ -498,6 +515,26 @@ label test_messages_save_compat:
         state = phone.MessagesState()
         del state.__dict__["threads"]
         expect_eq(loads(dumps(state)).threads, {}, "state threads recreated")
+    return
+
+
+label test_messages_bubble_tail:
+    python:
+        E = phone.Entry
+        log = [
+            E(1, "note", "Today"),
+            E(2, "text", "a", sender="_tmsg_bob"), E(3, "text", "b", sender="_tmsg_bob"),
+            E(4, "image", None, "demo photo cat", sender="_tmsg_cat"),
+            E(5, "me", "c"), E(6, "me", "d"),
+            E(7, "text", "e", sender="_tmsg_bob"),
+        ]
+        expect_eq([phone.bubble_tail(log, i) for i in range(1, 7)], [False, True, True, False, True, True],
+                  "the last bubble of each sender's run has the tail")
+        expect(not phone.bubble_tail(log, 6, True), "the typing bubble takes the tail")
+        expect(phone.bubble_tail(log[:6], 5, True), "the player's last bubble keeps it")
+        for name in phone.required_art:
+            if name.startswith("messages/"):
+                expect(phone.has_art(name), "art " + name)
     return
 
 

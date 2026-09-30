@@ -9,8 +9,6 @@ class MessagesApp(App):
     id = "messages"
     name = _("Messages")
     screen = "phone_messages"
-    glyph = "❝"
-    color = "#34c759"
     order = 10
 
     def badge(self):
