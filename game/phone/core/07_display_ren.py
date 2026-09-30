@@ -83,10 +83,10 @@ def app_icon(app, size):
 
 def wallpaper_image():
     """The current wallpaper displayable, or None for the theme color."""
-    wid = state.wallpaper or cfg.default_wallpaper
-    for w in cfg.wallpapers:
-        if w[0] == wid:
-            return w[1]
+    for wid in (state.wallpaper, cfg.default_wallpaper):
+        for w in cfg.wallpapers:
+            if wid is not None and w[0] == wid:
+                return w[1]
     return None
 
 

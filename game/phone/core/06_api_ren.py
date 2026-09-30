@@ -4,6 +4,7 @@ init -940 python in phone:
 
 # Public functions for game scripts, e.g. `$ phone.open("messages")`.
 
+import re as _re
 import time as _time
 
 
@@ -77,10 +78,33 @@ def set_battery(percent):
     state.battery = max(0, min(100, int(percent)))
 
 
+def clock_24h():
+    """True for a 24-hour clock: the player's setting, else cfg.clock_format."""
+    pref = store.persistent._phone_clock_24h
+    if pref is None:
+        return "%H" in cfg.clock_format
+    return bool(pref)
+
+
 def clock_text():
-    if state.clock is not None:
-        return state.clock
-    return _time.strftime(cfg.clock_format)
+    pref = store.persistent._phone_clock_24h
+    if pref is None:
+        return state.clock if state.clock is not None else _time.strftime(cfg.clock_format)
+
+    # The player picked 12 or 24 hours: reformat real and story ("21:34") times.
+    if state.clock is None:
+        now = _time.localtime()
+        hour, minute = now.tm_hour, now.tm_min
+    else:
+        m = _re.match(r"\s*(\d{1,2}):(\d\d)\s*([AaPp][Mm])?\s*$", state.clock)
+        if m is None or int(m.group(1)) > 23:
+            return state.clock
+        hour, minute = int(m.group(1)), int(m.group(2))
+        if m.group(3):
+            hour = hour % 12 + (12 if m.group(3).lower() == "pm" else 0)
+    if pref:
+        return "{:02d}:{:02d}".format(hour, minute)
+    return "{}:{:02d} {}".format((hour + 11) % 12 + 1, minute, "AM" if hour < 12 else "PM")
 
 
 def install_app(app_id):
