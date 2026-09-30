@@ -7,9 +7,6 @@ init 900 python in phone:
 if cfg.hud and "phone_hud" not in store.config.overlay_screens:
     store.config.overlay_screens.append("phone_hud")
 
-if _after_load not in store.config.after_load_callbacks:
-    store.config.after_load_callbacks.append(_after_load)
-
 
 def _lint():
     if _style_inputs() != _style_snapshot:

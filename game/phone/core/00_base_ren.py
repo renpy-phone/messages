@@ -93,3 +93,23 @@ def mutated():
     """
     renpy.retain_after_load()
     renpy.restart_interaction()
+
+
+def init_only(what):
+    """Raises (in developer mode) when a define-time call happens at runtime.
+
+    Registries such as contacts and wallpapers are rebuilt from the scripts
+    at every launch, so a runtime change would silently vanish on load.
+    """
+    if store.config.developer and not renpy.game.context().init_phase:
+        raise Exception(
+            "{} must be called at init time (in a define or init python block); "
+            "changes made while the game runs are not saved.".format(what)
+        )
+
+
+# Theme and text size switching re-run the phone styles through gui.rebuild(),
+# which needs deferred styles. gui.init() turns this on; games that never
+# call it get it here.
+if not store.config.defer_styles:
+    store.config.defer_styles = True

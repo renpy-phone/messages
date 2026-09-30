@@ -99,7 +99,7 @@ screen phone_wallpapers_preview(wallpaper):
                 vbox:
                     xfill True
                     null height phone.px(30)
-                    text phone.clock_text() style "phone_home_clock" substitute False
+                    add phone.clock("phone_home_clock") xalign 0.5
             else:
                 add Solid("#000000a0")
                 vbox:

@@ -30,6 +30,18 @@ init python:
         res = "{}x{}".format(config.screen_width, config.screen_height)
         renpy.screenshot(os.path.join(folder, "{}-{}.png".format(name, res)))
 
+    import contextlib
+
+    @contextlib.contextmanager
+    def runtime_registry():
+        """Lets a test call init-only registry functions (see phone.init_only)."""
+        dev = config.developer
+        config.developer = False
+        try:
+            yield
+        finally:
+            config.developer = dev
+
     def wait(seconds):
         """Lets the game run for a while, even under the modal phone screen.
 

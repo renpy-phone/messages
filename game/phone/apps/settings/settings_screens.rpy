@@ -70,7 +70,7 @@ screen phone_settings(scroll=0.0):
 
                 use phone_settings_section(_("About"))
                 use phone_settings_info(_("Name"), phone.cfg.device_name)
-                use phone_settings_info(_("Owner"), phone.cfg.player_name)
+                use phone_settings_info(_("Owner"), phone.player_name())
                 use phone_settings_info(_("Model"), phone.cfg.device_model)
                 use phone_settings_info(_("Software"), phone.cfg.software_version)
 

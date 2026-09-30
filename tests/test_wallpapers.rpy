@@ -44,7 +44,8 @@ label test_wallpapers_registry:
         # Plain 3-tuples appended by a game are accepted.
         phone.cfg.wallpapers.append(("test_plain", Solid("#123"), None))
         expect_eq(phone.wallpaper_entry("test_plain")[2:], ("Test Plain", False), "3-tuple entries")
-        phone.remove_wallpaper("test_plain")
+        with runtime_registry():
+            phone.remove_wallpaper("test_plain")
         expect(phone.wallpaper_entry("test_plain") is None, "remove_wallpaper")
     return
 
@@ -142,7 +143,8 @@ label test_wallpapers_empty:
     python:
         saved = list(phone.cfg.wallpapers)
         saved_default = phone.cfg.default_wallpaper
-        phone.clear_wallpapers()
+        with runtime_registry():
+            phone.clear_wallpapers()
         expect_eq(phone.current_wallpaper(), None, "no wallpapers")
         expect(phone.wallpaper_image() is None, "theme color")
     $ phone.show("wallpapers")
