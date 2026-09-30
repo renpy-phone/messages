@@ -6,3 +6,13 @@
 *.rpyc
 
 .DS_Store
+log.txt
+errors.txt
+traceback.txt
+lint.txt
+game/saves/
+game/cache/
+*.bak
+
+# Local copy of the Ren'Py SDK sources for editor type hints
+typings/

@@ -1,0 +1,40 @@
+name: test
+
+on:
+  push:
+  pull_request:
+
+jobs:
+  renpy:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    env:
+      RENPY_VERSION: "8.5.3"
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Cache Ren'Py SDK
+        id: sdk-cache
+        uses: actions/cache@v4
+        with:
+          path: ~/renpy-sdk
+          key: renpy-sdk-${{ env.RENPY_VERSION }}
+
+      - name: Download Ren'Py SDK
+        if: steps.sdk-cache.outputs.cache-hit != 'true'
+        run: |
+          mkdir -p ~/renpy-sdk
+          curl -sSL "https://www.renpy.org/dl/${RENPY_VERSION}/renpy-${RENPY_VERSION}-sdk.tar.bz2" | tar xj -C ~/renpy-sdk --strip-components=1
+
+      - name: Install virtual display
+        run: sudo apt-get update && sudo apt-get install -y xvfb libgl1-mesa-dri
+
+      - name: Lint and in-engine tests
+        run: RENPY_SDK=~/renpy-sdk tools/test.sh --shots screenshots
+
+      - name: Upload screenshots
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: screenshots
+          path: screenshots/
