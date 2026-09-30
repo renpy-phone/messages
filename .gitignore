@@ -5,7 +5,8 @@
 
 *.rpyc
 
-.DS_Storelog.txt
+.DS_Store
+log.txt
 errors.txt
 traceback.txt
 lint.txt
