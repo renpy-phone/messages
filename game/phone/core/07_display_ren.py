@@ -65,7 +65,7 @@ def avatar(who, size):
         )
 
     return AlphaMask(
-        Transform(image, fit="cover", xysize=(size, size)),
+        cover(image, size, size),
         Transform(asset("circle.png"), xysize=(size, size)),
     )
 

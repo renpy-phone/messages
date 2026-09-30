@@ -115,7 +115,7 @@ def thread_avatar(tid, size):
         return avatar(tid, size)
     if g.avatar is not None:
         return store.AlphaMask(
-            store.Transform(g.avatar, fit="cover", xysize=(size, size)),
+            cover(g.avatar, size, size),
             store.Transform(asset("circle.png"), xysize=(size, size)),
         )
     if len(g.members) >= 2:
@@ -477,17 +477,12 @@ def group_members_line(tid):
     return _shorten(", ".join([contact(m).name for m in g.members] + [renpy.translate_string("You")]), 32)
 
 
-def _centered(child, w, h):
-    return store.Transform(store.Fixed(store.Transform(child, align=(0.5, 0.5)), xysize=(w, h)), crop=(0, 0, w, h))
-
-
 def thumbnail(img, width=None, ratio=0.75):
     """Rounded, cropped preview of an image message."""
     w = int(width or content_size()[0] * 0.55)
     h = int(w * ratio)
-    scaled = store.Transform(img, fit="cover", xysize=(w, h))
     return store.AlphaMask(
-        _centered(scaled, w, h),
+        cover(img, w, h),
         store.Fixed(rounded("#ffffff", "md" if w > px(100) else "sm"), xysize=(w, h)),
     )
 

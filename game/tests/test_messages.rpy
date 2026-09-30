@@ -259,7 +259,8 @@ label test_messages_notification:
 
 
 label test_messages_playback:
-    $ phone.cfg.messages_typing_delay = 0.4
+    # Checks sit mid-way between deliveries so slow renders don't race them.
+    $ phone.cfg.messages_typing_delay = 1.0
     $ phone.Chat("_tmsg_ann").say("Earlier message").send()
     $ phone.show("messages")
     $ phone.MessagesOpen("_tmsg_ann")()
@@ -268,15 +269,15 @@ label test_messages_playback:
         phone.Reply("Reply", then=phone.Chat().say("Follow-up 1").say("Follow-up 2"))).send()
     $ expect_eq(len(phone.chat_log("_tmsg_ann")), 1, "nothing arrives instantly while watching")
     $ expect(phone.conversation("_tmsg_ann").next_is_incoming(), "typing indicator is shown")
-    $ wait(0.55)
+    $ wait(1.4)
     $ expect_eq(len(phone.chat_log("_tmsg_ann")), 2, "messages arrive one at a time")
-    $ wait(1.0)
+    $ wait(1.2)
     $ expect_eq(_tmsg_texts("_tmsg_ann"), ["Earlier message", "One", "Two"], "playback stops at the choice")
     $ expect_eq(phone.unread("_tmsg_ann"), 0, "messages seen on screen are not unread")
     $ phone.MessagesChoose("_tmsg_ann", _tmsg_uids("_tmsg_ann")[0])()
     $ expect_eq(_tmsg_texts("_tmsg_ann")[-1], "Reply", "the reply appears at once")
     $ expect_eq(len(phone.conversation("_tmsg_ann").pending), 2, "follow-ups play back with typing")
-    $ wait(0.45)
+    $ wait(1.4)
     $ expect_eq(_tmsg_texts("_tmsg_ann")[-1], "Follow-up 1", "first follow-up")
     # Leaving mid-playback delivers the rest.
     $ phone.Back()()
