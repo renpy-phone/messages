@@ -20,8 +20,9 @@ screen phone_header(title, back=True, right_text=None, right_action=None):
         text title style "phone_header_title" xmaximum phone.px(300)
 
         if back:
-            textbutton _("‹ Back"):
-                style "phone_header_button"
+            textbutton _("Back"):
+                style "phone_header_back"
+                properties phone.art_layer_states("common/back", (phone.px(24), phone.px(24)), yalign=0.5)
                 xalign 0.0
                 action phone.Back()
 
@@ -98,26 +99,17 @@ screen phone_badge(count, **properties):
 screen phone_toggle(label, value, action, description=None):
     button:
         style "phone_row"
+        # The switch is common/toggle: idle = off, selected = on.
+        properties phone.art_layer_states("common/toggle", (phone.px(52), phone.px(32)), "foreground", xalign=1.0, yalign=0.5, xoffset=-phone.px(16))
         action action
         selected value
 
-        hbox:
-            xfill True
-            vbox:
-                yalign 0.5
-                xsize phone.px(300)
-                text label style "phone_row_title"
-                if description:
-                    text description style "phone_row_subtext"
-
-            fixed:
-                xalign 1.0
-                yalign 0.5
-                xysize (phone.px(52), phone.px(30))
-                add phone.rounded("success" if value else "divider", "md")
-                add phone.circle("#ffffff", phone.px(26)):
-                    yalign 0.5
-                    xpos (phone.px(24) if value else phone.px(2))
+        vbox:
+            yalign 0.5
+            xsize phone.px(300)
+            text label style "phone_row_title"
+            if description:
+                text description style "phone_row_subtext"
 
     use phone_divider
 

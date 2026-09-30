@@ -15,7 +15,12 @@ def _lint():
             "phone styles were built (init -1). Change them in an "
             "`init -2 python in phone:` block instead."
         )
+    for name in required_art:
+        if not has_art(name):
+            print("phone: missing art {}{}_idle.png".format(gui_dir, name))
     for app in apps.values():
+        if app.icon is None and not has_art(app.icon_art()):
+            print("phone: app {!r} has no icon: add {}{}_idle.png".format(app.id, gui_dir, app.icon_art()))
         if not app.screen or not renpy.has_screen(app.screen):
             print("phone: app {!r} uses screen {!r}, which does not exist.".format(app.id, app.screen))
     for key in ("light", "dark"):

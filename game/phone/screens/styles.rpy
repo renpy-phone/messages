@@ -2,8 +2,12 @@
 # overrides (both at init -2), and before game code at init 0, so a game can
 # override any of them with its own `style phone_...:` statement.
 #
-# Colors come from phone.color(), which reads the active theme. Changing the
-# theme or text size calls gui.rebuild(), which re-runs these statements.
+# Shapes and icons come from art files under gui/phone/ (see phone.art_path);
+# text colors and flat fills come from phone.color(), which reads the active
+# theme. Changing the theme or text size calls gui.rebuild(), which re-runs
+# these statements, so themed art (gui/phone/themes/<theme>/) is picked up.
+#
+# Frame borders below are in art pixels at 1080p scale.
 
 init offset = -1
 
@@ -30,7 +34,7 @@ style phone_subtext is phone_default:
 # The device ------------------------------------------------------------------
 
 style phone_device is empty:
-    background phone.rounded("bezel", "lg")
+    background phone.art_frame("device/frame", 48)
     padding (phone.px(phone.cfg.bezel), phone.px(phone.cfg.bezel))
     xysize (phone.px(phone.cfg.width), phone.px(phone.cfg.height))
 
@@ -56,14 +60,8 @@ style phone_nav_bar is empty:
 
 style phone_nav_button is empty:
     xysize (phone.px(90), phone.px(phone.NAV_HEIGHT))
-
-style phone_nav_button_text is phone_glyph:
-    size phone.px(30)
     xalign 0.5
     yalign 0.5
-    color phone.color("subtext")
-    hover_color phone.color("accent")
-    insensitive_color phone.color("divider")
 
 # Home screen -----------------------------------------------------------------
 
@@ -105,6 +103,11 @@ style phone_header_button_text is phone_default:
     hover_color phone.color("text")
     size phone.text_px(22)
 
+style phone_header_back is phone_header_button:
+    left_padding phone.px(28)
+
+style phone_header_back_text is phone_header_button_text
+
 style phone_body is empty:
     xfill True
     ysize phone.page_body_height()
@@ -128,7 +131,7 @@ style phone_divider is empty:
     background phone.color("divider")
 
 style phone_badge is empty:
-    background phone.rounded("badge", "md")
+    background phone.art_frame("common/badge", 12)
     padding (phone.px(7), phone.px(1))
     xminimum phone.px(24)
     ysize phone.px(24)
@@ -141,9 +144,9 @@ style phone_badge_text is phone_default:
     yalign 0.5
 
 style phone_button is empty:
-    background phone.rounded("accent", "md")
-    hover_background phone.rounded("text", "md")
-    insensitive_background phone.rounded("surface_alt", "md")
+    background phone.art_frame("common/button", 18)
+    hover_background phone.art_frame("common/button", 18, "hover")
+    insensitive_background phone.art_frame("common/button", 18, "insensitive")
     padding (phone.px(20), phone.px(12))
 
 style phone_button_text is phone_default:
@@ -167,7 +170,7 @@ style phone_tab_text is phone_default:
 style phone_vscrollbar is vscrollbar:
     xsize phone.px(4)
     base_bar Solid("#0000")
-    thumb phone.rounded("subtext", "sm")
+    thumb phone.art_frame("common/scrollbar", 2)
     unscrollable "hide"
 
 style phone_empty_text is phone_subtext:
@@ -178,7 +181,7 @@ style phone_empty_text is phone_subtext:
 # Notification banner and HUD button ------------------------------------------
 
 style phone_notification is empty:
-    background phone.rounded("surface", "md")
+    background phone.art_frame("common/banner", 18)
     xalign 0.5
     ypos phone.px(20)
     xsize phone.px(440)
@@ -186,6 +189,10 @@ style phone_notification is empty:
 
 style phone_hud_button is empty:
     xysize (phone.px(72), phone.px(72))
+
+style phone_avatar_initial is phone_default:
+    color "#ffffff"
+    bold True
 
 
 init python in phone:

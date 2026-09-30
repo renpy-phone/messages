@@ -5,7 +5,7 @@ init python:
         id = "test_app"
         name = "Test"
         screen = "phone_test_app"
-        glyph = "T"
+        icon = Solid("#8e8e93")
         order = 999
         installed = False
 

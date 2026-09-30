@@ -16,7 +16,8 @@ class App(python_object):
     `screen`    screen shown when the app is launched. It is `use`d inside the
                 phone shell and receives the keyword arguments given to
                 phone.Launch() / phone.Navigate().
-    `icon`      displayable for the icon, or None to draw `glyph` on `color`.
+    `icon`      None to use the art at gui/phone/apps/<id>/icon_<state>.png
+                (idle, hover, ...), or any displayable to use instead.
     `order`     position on the home screen, lowest first.
     `installed` whether the app is on the home screen at the start of a game.
     """
@@ -25,13 +26,15 @@ class App(python_object):
     name = ""
     screen = None
     icon = None
-    glyph = "?"
-    color = "#8e8e93"
     order = 100
     installed = True
 
     def __repr__(self):
         return "<phone app {}>".format(self.id)
+
+    def icon_art(self):
+        """Art name of the home screen icon (see phone.art_path)."""
+        return "apps/{}/icon".format(self.id)
 
     def badge(self):
         """Number shown on the icon, e.g. unread messages."""

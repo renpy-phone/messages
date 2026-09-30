@@ -75,13 +75,16 @@ screen phone_status_bar(on_wallpaper=False):
             background phone.color("surface")
 
         $ status_color = phone.color("status_text" if on_wallpaper else "text")
+        # Over a wallpaper, status/wallpaper/<icon> is used when it exists.
+        $ icon_size = (phone.px(24), phone.px(16))
 
         add phone.clock("phone_status_text", status_color) xalign 0.0 yalign 0.5
         hbox:
             xalign 1.0
             yalign 0.5
             spacing phone.px(6)
-            text "▂▄▆" style "phone_status_text" font phone.GLYPH_FONT color status_color size phone.px(14)
+            add phone.art(phone.bar_art("status/signal", on_wallpaper), size=icon_size) yalign 0.5
+            add phone.art(phone.bar_art("status/battery", on_wallpaper), size=icon_size) yalign 0.5
             text "[phone.state.battery]%" style "phone_status_text" color status_color
 
 
@@ -91,19 +94,24 @@ screen phone_nav_bar(on_wallpaper=False):
         if not on_wallpaper:
             background phone.color("surface")
 
+        $ icon_size = (phone.px(36), phone.px(36))
+
         hbox:
             xalign 0.5
-            textbutton "‹":
+            imagebutton:
                 style "phone_nav_button"
+                properties phone.art_states(phone.bar_art("nav/back", on_wallpaper), icon_size)
                 action phone.Back()
                 sensitive bool(phone.state.nav)
                 alt _("Back")
-            textbutton "○":
+            imagebutton:
                 style "phone_nav_button"
+                properties phone.art_states(phone.bar_art("nav/home", on_wallpaper), icon_size)
                 action phone.Home()
                 alt _("Home")
-            textbutton "✕":
+            imagebutton:
                 style "phone_nav_button"
+                properties phone.art_states(phone.bar_art("nav/close", on_wallpaper), icon_size)
                 action phone.Close()
                 alt _("Close phone")
 
@@ -129,6 +137,9 @@ screen phone_home():
 screen phone_app_button(app):
     button:
         style "phone_app_button"
+        # The icon is the button's background, so it follows the button's
+        # idle/hover/selected state (apps/<id>/icon_<state>.png).
+        properties phone.app_button_backgrounds(app)
         action phone.Launch(app.id)
         alt app.name
 
@@ -142,7 +153,6 @@ screen phone_app_button(app):
             fixed:
                 xysize (phone.px(72), phone.px(72))
                 xalign 0.5
-                add phone.app_icon(app, phone.px(72))
 
                 $ count = app.badge()
                 if count:

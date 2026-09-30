@@ -9,8 +9,7 @@ init python in phone:
         id = "bank"
         name = _("Bank")
         screen = "phone_bank"
-        glyph = "✦"
-        color = "#2e7d32"
+        icon = Solid("#2e7d32")  # a real game ships gui/phone/apps/bank/icon_idle.png
 
         def reset(self):
             global bank_state

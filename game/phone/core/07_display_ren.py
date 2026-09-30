@@ -92,29 +92,58 @@ def avatar(who, size):
 
 @memoized
 def _avatar(image, tint, initial, size):
+    mask = art("common/avatar_mask", size=(size, size), fit="fill")
     if image is None:
+        # No picture: the default avatar art with the contact's initial.
         return Fixed(
-            circle(tint, size),
-            Text(initial, substitute=False, size=int(size * 0.45), color="#ffffff", bold=True, xalign=0.5, yalign=0.5),
+            art("common/avatar_default", size=(size, size), fit="fill"),
+            Text(initial, style="phone_avatar_initial", substitute=False, size=int(size * 0.45), xalign=0.5, yalign=0.5),
             xysize=(size, size),
         )
 
-    return AlphaMask(
-        cover(image, size, size),
-        Transform(asset("circle.png"), xysize=(size, size)),
-    )
+    return AlphaMask(cover(image, size, size), mask)
 
 
 @memoized
-def app_icon(app, size):
+def app_icon(app, size, state="idle"):
+    """The app's home screen icon: App.icon, or its art in `state`."""
     size = int(size)
     if app.icon is not None:
         return Transform(app.icon, fit="contain", xysize=(size, size))
-    return Fixed(
-        Transform(tinted(asset("app_icon.png"), app.color), xysize=(size, size)),
-        Text(app.glyph, font=GLYPH_FONT, size=int(size * 0.5), color="#ffffff", xalign=0.5, yalign=0.5),
-        xysize=(size, size),
-    )
+    return art(app.icon_art(), state, size=(size, size))
+
+
+def app_icon_states(app, size):
+    """Icon displayables for every button state, for an imagebutton."""
+    return {state: app_icon(app, size, state) for state in STATES}
+
+
+APP_ICON_SIZE = 72
+APP_ICON_TOP = 10
+
+
+@memoized
+def app_button_backgrounds(app):
+    """Background properties that draw the app icon in every button state."""
+    size = px(APP_ICON_SIZE)
+    rv = {}
+    for state in STATES:
+        key = "background" if state == "idle" else state + "_background"
+        rv[key] = Fixed(
+            Transform(app_icon(app, size, state), xalign=0.5, ypos=px(APP_ICON_TOP)),
+            xfill=True, yfill=True,
+        )
+    return rv
+
+
+def bar_art(name, on_wallpaper):
+    """Art for the status or nav bar: `<area>/wallpaper/<icon>` is preferred
+    over the wallpaper, falling back to the regular `<area>/<icon>`.
+    """
+    if on_wallpaper:
+        area, _, icon = name.rpartition("/")
+        return [area + "/wallpaper/" + icon, name]
+    return name
 
 
 def wallpaper_image():

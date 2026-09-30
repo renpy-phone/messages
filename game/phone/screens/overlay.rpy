@@ -9,13 +9,11 @@ screen phone_hud():
     if phone.hud_visible():
         button:
             style "phone_hud_button"
+            properties phone.art_layer_states("hud/button", (phone.px(72), phone.px(72)))
             xalign phone.cfg.hud_xalign
             yalign phone.cfg.hud_yalign
             action phone.Show()
             alt _("Open phone")
-
-            add phone.circle("bezel", phone.px(72))
-            text "☏" style "phone_glyph" size phone.px(34) color "#ffffff" align (0.5, 0.5)
 
             $ count = phone.total_badges()
             if count:
