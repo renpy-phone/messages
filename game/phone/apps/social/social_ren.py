@@ -59,6 +59,7 @@ class SocialProfile(python_object):
 
 def social_profile(who, bio="", followers=0, following=0, followed=False):
     """Registers profile defaults for `who` (a Contact, an id, or None for the player)."""
+    init_only("phone.social_profile()")
     rv = SocialProfile(who, bio=bio, followers=followers, following=following, followed=followed)
     social_profiles[rv.who] = rv
     return rv
@@ -370,12 +371,12 @@ class SocialApp(App):
 
     def handle(self, who):
         if who is None:
-            return cfg.player_handle
+            return player_handle()
         return contact(who).handle
 
     def display_name(self, who):
         if who is None:
-            return cfg.player_name
+            return player_name()
         return contact(who).name
 
 
@@ -402,21 +403,11 @@ def social_count(n):
     return str(n)
 
 
-# Built displayables, reused across redraws. A plain dict: never saved and
-# never rolled back. Keys include the theme and text scale, since both change
-# what gets built.
-_social_memo = _dict()
-
-
+@memoized
 def social_icon(name, key, size):
-    """One of the app's white icons ("heart", "heart_outline", "comment"), tinted."""
-    k = ("icon", name, key, size, theme_name(), text_scale())
-    rv = _social_memo.get(k)
-    if rv is None:
-        if len(_social_memo) > 500:
-            _social_memo.clear()
-        rv = _social_memo[k] = Transform(tinted(social_asset_dir + name + ".png", key), xysize=(size, size))
-    return rv
+    """One of the app's white icons ("heart", "heart_outline", "comment"),
+    tinted. Built once per theme, text size and resolution."""
+    return Transform(tinted(social_asset_dir + name + ".png", key), xysize=(size, size))
 
 
 def social_card_width():

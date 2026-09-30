@@ -49,6 +49,7 @@ init python:
 default _test_social_aff = 0
 default _test_social_name = "Sam"
 default _test_social_uid = None
+default _test_social_waited = 0.0
 
 
 label test_social_feed_model:
@@ -86,7 +87,12 @@ label test_social_feed_model:
     $ phone.show("social", "phone_social_profile", who="lucy")
     $ expect_eq(s.unseen(), 1, "a profile doesn't mark the feed seen")
     $ phone.Back()()
-    $ wait(0.3)
+    # The feed marks posts seen from a timer once it is on screen; allow for
+    # slow renders instead of relying on one short wait.
+    $ _test_social_waited = 0.0
+    while s.unseen() and _test_social_waited < 5.0:
+        $ wait(0.1)
+        $ _test_social_waited += 0.1
     $ expect_eq(s.unseen(), 0, "going back to the feed marks posts seen")
     $ phone.close()
 
@@ -204,7 +210,20 @@ label test_social_follow:
     $ expect_eq(s.bio("test_social_pal"), "Digital now.", "set_bio")
 
     $ expect_eq((s.followers("nobody"), s.bio("nobody")), (0, ""), "no profile registered")
-    $ expect_eq(s.handle(None), phone.cfg.player_handle, "player handle")
+    $ expect_eq(s.handle(None), phone.player_handle(), "player handle")
+    $ phone.set_player_name("Sam [_test_social_name]", handle="sam.[_test_social_name]")
+    $ expect_eq((s.display_name(None), s.handle(None)), ("Sam Sam", "sam.Sam"), "set_player_name reaches the profile")
+    python:
+        if config.developer:
+            try:
+                phone.social_profile("test_social_pal", bio="Runtime")
+                expect(False, "social_profile() at runtime is rejected")
+            except Exception:
+                pass
+        with runtime_registry():
+            phone.social_profile("test_social_runtime", bio="Runtime")
+        expect_eq(s.bio("test_social_runtime"), "Runtime", "social_profile() inside runtime_registry")
+        del phone.social_profiles["test_social_runtime"]
     $ expect_eq(s.handle("test_social_pal"), "pat.snaps", "contact handle")
     $ expect_eq([phone.social_count(n) for n in (950, 1284, 12400, 3100000)], ["950", "1,284", "12.4K", "3.1M"], "short counts")
     return
