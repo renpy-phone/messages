@@ -1,1 +1,0 @@
-image darker_80 = "#000000CC"
