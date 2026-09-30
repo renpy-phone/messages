@@ -494,3 +494,80 @@ label test_calls_screens:
     $ phone.close()
     $ phone.set_theme("light")
     return
+
+
+# Art --------------------------------------------------------------------------
+
+init python:
+    _CALLS_ART_SHEET = [
+        ("calls/accept", ("idle", "hover", "insensitive")),
+        ("calls/decline", ("idle", "hover")),
+        ("calls/hangup", ("idle", "hover", "insensitive")),
+        ("calls/message", ("idle", "hover", "insensitive")),
+        ("calls/row_call", ("idle", "hover", "insensitive")),
+        ("calls/key", ("idle", "hover")),
+        ("calls/delete", ("idle", "hover")),
+        ("calls/incoming", ("idle",)),
+        ("calls/outgoing", ("idle",)),
+        ("calls/missed", ("idle",)),
+        ("calls/declined", ("idle",)),
+        ("apps/calls/icon", ("idle", "hover")),
+    ]
+
+## Every calls icon in each of its states, for the screenshots.
+screen _calls_art_sheet():
+    zorder 10000
+    add phone.color("bg")
+    vbox:
+        align (0.5, 0.5)
+        spacing phone.px(10)
+        for name, states in _CALLS_ART_SHEET:
+            hbox:
+                spacing phone.px(12)
+                text name style "phone_subtext" min_width phone.px(170) yalign 0.5
+                for s in states:
+                    frame:
+                        background phone.color("surface")
+                        padding (phone.px(4), phone.px(4))
+                        add phone.art(name, s, (phone.px(48), phone.px(48)))
+        hbox:
+            spacing phone.px(12)
+            frame:
+                background phone.color("call_bg")
+                padding (phone.px(8), phone.px(8))
+                hbox:
+                    spacing phone.px(8)
+                    add phone.art("calls/pulse", size=(phone.px(48), phone.px(48))) alpha 0.5
+                    add phone.art("calls/unknown_caller", size=(phone.px(48), phone.px(48)))
+            frame:
+                style "phone_calls_card_list"
+                xfill False
+                xsize phone.px(120)
+                ysize phone.px(64)
+            frame:
+                style "phone_calls_pill"
+                xalign 0.0
+                ypos 0
+                xsize phone.px(160)
+                ysize phone.px(64)
+
+
+label test_calls_art:
+    $ expect(not hasattr(phone.get_app("calls"), "glyph"), "the app has no glyph")
+    $ expect(phone.get_app("calls").icon is None, "the app icon is art")
+    python:
+        needed = [n for n in phone.required_art if n.startswith(("calls/", "apps/calls/"))]
+        expect(len(needed) >= 16, "the calls app requires its art")
+        expect_eq([n for n in needed if not phone.has_art(n)], [], "all calls art exists")
+        for _n, _states in _CALLS_ART_SHEET:
+            for _s in _states:
+                expect(phone.art_path(_n, _s).endswith("{}_{}.png".format(_n, _s)), "{} has a {} state".format(_n, _s))
+    $ expect_eq(phone.call_direction_art("missed"), "calls/missed", "direction icons")
+    show screen _calls_art_sheet
+    $ shot("calls-art")
+    $ phone.set_theme("dark")
+    $ expect("themes/dark/calls/" in phone.art_path("calls/key"), "dark theme art")
+    $ shot("calls-art-dark")
+    $ phone.set_theme("light")
+    hide screen _calls_art_sheet
+    return

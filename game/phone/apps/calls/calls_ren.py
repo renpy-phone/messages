@@ -59,6 +59,24 @@ for _k, _v in (("call_bg", "#14161b"), ("call_text", "#ffffff"), ("call_subtext"
 
 CALL_DIRECTIONS = ("incoming", "outgoing", "missed", "declined")
 
+# Art under gui/phone/calls/ (see tools/art/calls_art.rpy):
+#   accept, decline, hangup, message    round call buttons (idle, hover, ...)
+#   row_call                            call button of a Contacts row
+#   key, delete                         keypad key and delete key
+#   incoming, outgoing, missed, declined  call direction icons in Recents
+#   pulse, unknown_caller               call screen avatar ring; avatar of
+#                                       callers who are not contacts
+#   pill, card                          frames of the in-call pill and of the
+#                                       recent calls box on a contact card
+require_art(
+    "apps/calls/icon",
+    "calls/accept", "calls/decline", "calls/hangup", "calls/message",
+    "calls/row_call", "calls/key", "calls/delete",
+    "calls/pulse", "calls/unknown_caller", "calls/pill", "calls/card",
+    "common/chevron",
+    *["calls/" + _d for _d in CALL_DIRECTIONS]
+)
+
 
 class CallRecord(object):
     """One line of the call log.
@@ -150,11 +168,7 @@ def caller_avatar(key, size):
     if is_contact_key(key):
         return avatar(key, size)
     size = int(size)
-    return Fixed(
-        circle("#8e8e93", size),
-        Text("☏", font=GLYPH_FONT, size=int(size * 0.5), color="#ffffff", xalign=0.5, yalign=0.5),
-        xysize=(size, size),
-    )
+    return art("calls/unknown_caller", size=(size, size), fit="fill")
 
 
 # Call log -------------------------------------------------------------------
@@ -218,9 +232,6 @@ def call_contacts():
     return sorted(known_contacts(), key=lambda c: c.name.lower())
 
 
-# Arrows that DejaVu Sans draws as plain glyphs (not color emoji).
-CALL_GLYPHS = {"incoming": "⬋", "outgoing": "⬈", "missed": "⬋", "declined": "⬋"}
-
 _CALL_WORDS = {
     "incoming": store._("Incoming"),
     "outgoing": store._("Outgoing"),
@@ -237,8 +248,9 @@ KEYPAD = [
 ]
 
 
-def call_glyph(direction):
-    return CALL_GLYPHS.get(direction, "")
+def call_direction_art(direction):
+    """Art name of the icon for a call direction, e.g. "calls/missed"."""
+    return "calls/" + direction
 
 
 def call_description(rec):

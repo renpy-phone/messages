@@ -84,9 +84,7 @@ screen phone_calls_log_row(rec):
                 text phone.caller_name(rec.who) style "phone_row_title" color tint substitute False
                 hbox:
                     spacing phone.px(6)
-                    text phone.call_glyph(rec.direction):
-                        style "phone_calls_dir_glyph"
-                        color (phone.color("danger") if rec.direction in ("missed", "declined") else phone.color("subtext"))
+                    add phone.art(phone.call_direction_art(rec.direction), size=(phone.text_px(18), phone.text_px(18))) yalign 0.5
                     text phone.call_description(rec) style "phone_row_subtext" substitute False
 
             fixed:
@@ -99,8 +97,9 @@ screen phone_calls_log_row(rec):
                     xoffset -phone.px(34)
                     substitute False
                 if is_contact:
-                    textbutton "›":
+                    button:
                         style "phone_calls_info"
+                        properties phone.art_layer_states("common/chevron", (phone.px(24), phone.px(24)), xalign=0.5, yalign=0.5)
                         xalign 1.0
                         yalign 0.5
                         action phone.Navigate("phone_calls_contact", who=rec.who)
@@ -134,7 +133,6 @@ screen phone_calls_contacts():
                             yalign 0.5
                             action phone.CallContact(c.id)
                             alt _("Call")
-                            text "✆" style "phone_calls_row_call_glyph"
 
                 use phone_divider
 
@@ -165,9 +163,9 @@ screen phone_calls_contact(who):
                 hbox:
                     xalign 0.5
                     spacing phone.px(56)
-                    use phone_calls_round_button("✆", "success", _("Call"), phone.CallContact(who), size=68, label_style="phone_calls_card_action")
+                    use phone_calls_round_button("calls/accept", _("Call"), phone.CallContact(who), size=68, label_style="phone_calls_card_action")
                     if phone.get_app("messages") is not None:
-                        use phone_calls_round_button("❝", "accent", _("Message"), phone.Launch("messages", "phone_messages_thread", thread=who), size=68, label_style="phone_calls_card_action")
+                        use phone_calls_round_button("calls/message", _("Message"), phone.Launch("messages", "phone_messages_thread", thread=who), size=68, label_style="phone_calls_card_action")
 
                 if records:
                     null height phone.px(20)
@@ -179,9 +177,7 @@ screen phone_calls_contact(who):
                                 fixed:
                                     xfill True
                                     ysize phone.text_px(34)
-                                    text phone.call_glyph(rec.direction):
-                                        style "phone_calls_dir_glyph"
-                                        color (phone.color("danger") if rec.direction in ("missed", "declined") else phone.color("subtext"))
+                                    add phone.art(phone.call_direction_art(rec.direction), size=(phone.text_px(18), phone.text_px(18))) yalign 0.5
                                     text phone.call_description(rec):
                                         style "phone_calls_card_record"
                                         color (phone.color("danger") if rec.direction == "missed" else phone.color("text"))
@@ -224,10 +220,11 @@ screen phone_calls_keypad():
             xalign 0.5
             spacing phone.px(26)
             null width phone.px(82)
-            use phone_calls_round_button("✆", "success", None, phone.DialNumber(), size=82)
+            use phone_calls_round_button("calls/accept", None, phone.DialNumber(), size=82, alt=_("Call"))
             if dialed:
-                textbutton "⌫":
+                button:
                     style "phone_calls_backspace"
+                    properties phone.art_layer_states("calls/delete", (phone.px(40), phone.px(40)), xalign=0.5, yalign=0.5)
                     action phone.KeypadDelete()
                     alt _("Delete")
             else:
@@ -246,11 +243,11 @@ screen phone_calls_incoming(who, can_decline=True):
         yalign 0.86
         spacing phone.px(120)
         if can_decline:
-            use phone_calls_round_button("✕", "danger", _("Decline"), Return("decline"))
+            use phone_calls_round_button("calls/decline", _("Decline"), Return("decline"))
         fixed:
             fit_first True
             at phone_calls_bob
-            use phone_calls_round_button("✆", "success", _("Accept"), Return("accept"))
+            use phone_calls_round_button("calls/accept", _("Accept"), Return("accept"))
 
 
 ## An outgoing call that nobody picks up. It closes by itself.
@@ -266,7 +263,7 @@ screen phone_calls_outgoing(who, uid=None):
     hbox:
         xalign 0.5
         yalign 0.86
-        use phone_calls_round_button("✕", "danger", _("End"), phone.Back())
+        use phone_calls_round_button("calls/hangup", _("End"), phone.Back())
 
 
 ## Avatar, name and a status line, centered at the top of a call screen.
@@ -280,8 +277,8 @@ screen phone_calls_caller(who, status=None, pulse=False):
             xysize (phone.px(220), phone.px(220))
             xalign 0.5
             if pulse:
-                add phone.circle("call_text", phone.px(150)) at phone_calls_pulse(0.0) align (0.5, 0.5)
-                add phone.circle("call_text", phone.px(150)) at phone_calls_pulse(0.8) align (0.5, 0.5)
+                add phone.art("calls/pulse", size=(phone.px(150), phone.px(150))) at phone_calls_pulse(0.0) align (0.5, 0.5)
+                add phone.art("calls/pulse", size=(phone.px(150), phone.px(150))) at phone_calls_pulse(0.8) align (0.5, 0.5)
             add phone.caller_avatar(who, phone.px(150)) align (0.5, 0.5)
 
         text phone.caller_name(who) style "phone_calls_caller_name" substitute False
@@ -291,20 +288,17 @@ screen phone_calls_caller(who, status=None, pulse=False):
             text phone.caller_number(who) style "phone_calls_status" substitute False
 
 
-## A round call button with a caption.
-screen phone_calls_round_button(glyph, key, caption, action, size=76, label_style="phone_calls_round_label"):
+## A round call button with a caption. `art` names the button's art
+## (idle, hover and insensitive states), e.g. "calls/accept".
+screen phone_calls_round_button(art, caption, action, size=76, label_style="phone_calls_round_label", alt=None):
     vbox:
         spacing phone.px(8)
-        button:
+        imagebutton:
             style "phone_calls_round"
-            xysize (phone.px(size), phone.px(size))
+            properties phone.art_states(art, (phone.px(size), phone.px(size)))
             xalign 0.5
-            background phone.circle(key, phone.px(size))
-            hover_background Transform(phone.circle(key, phone.px(size)), alpha=0.8)
-            insensitive_background Transform(phone.circle(key, phone.px(size)), alpha=0.4)
             action action
-            alt (caption or glyph)
-            text glyph style "phone_calls_round_glyph" size phone.px(size * 0.42)
+            alt (alt or caption)
         if caption:
             text caption style label_style
 
@@ -333,12 +327,9 @@ screen phone_calls_active():
                 if call.label:
                     null width phone.px(8)
                 else:
-                    button:
+                    imagebutton:
                         style "phone_calls_round"
-                        xysize (phone.px(44), phone.px(44))
+                        properties phone.art_states("calls/hangup", (phone.px(44), phone.px(44)))
                         yalign 0.5
-                        background phone.circle("danger", phone.px(44))
-                        hover_background Transform(phone.circle("danger", phone.px(44)), alpha=0.8)
                         action phone.HangUp()
                         alt _("Hang up")
-                        text "✕" style "phone_calls_round_glyph" size phone.px(20)

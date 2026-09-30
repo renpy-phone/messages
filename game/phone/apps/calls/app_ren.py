@@ -9,8 +9,6 @@ class CallsApp(App):
     id = "calls"
     name = store._("Phone")
     screen = "phone_calls"
-    glyph = "✆"
-    color = "#34c759"
     order = 20
 
     def badge(self):
