@@ -31,6 +31,11 @@ cfg.themes["dark"].setdefault("social_like", "#ff3040")
 cfg.sounds.setdefault("social_post", None)
 cfg.sounds.setdefault("social_like", None)
 
+# How many posts the feed (and a profile grid) builds before the player taps
+# "Load more". Keeps the screens fast in long playthroughs.
+if not hasattr(cfg, "social_max_rendered"):
+    cfg.social_max_rendered = 30
+
 
 # Static profile registry -----------------------------------------------------
 
@@ -68,12 +73,21 @@ def _social_static(who):
 
 # Saved state -----------------------------------------------------------------
 
+# Saved classes give every field a class-level default, so saves made before
+# a field was added still load (the missing attribute falls back to it).
+# Mutable fields default to immutable empties and are always set in __init__.
+
 class CommentOption(object):
     """A comment the player can post on a post, once.
 
     `effects` is a Ren'Py action or a list of them, run when the player
     posts this comment.
     """
+
+    text = ""
+    effects = ()
+    uid = None
+    used = False
 
     def __init__(self, text, effects=None):
         self.text = text
@@ -86,6 +100,10 @@ class CommentOption(object):
 
 
 class SocialComment(object):
+    uid = None
+    who = None
+    text = ""
+
     def __init__(self, uid, who, text):
         self.uid = uid
         self.who = who  # contact id, or None for the player
@@ -93,6 +111,19 @@ class SocialComment(object):
 
 
 class SocialPost(object):
+    uid = None
+    who = None
+    image = None
+    caption = ""
+    likes = 0
+    liked = False
+    like_effects = ()
+    like_effects_done = False
+    comments = ()
+    options = ()
+    time = None
+    seen = True
+
     def __init__(self, uid, who, image, caption="", likes=0, time=None):
         self.uid = uid
         self.who = who  # contact id, or None for the player
@@ -117,6 +148,10 @@ class SocialPost(object):
 
 
 class SocialState(object):
+    # Missing fields are filled in by _social_after_load instead of class
+    # defaults, so no save ever shares a mutable class-level dict.
+    version = 1
+
     def __init__(self):
         self.version = 1
         self.posts = []  # newest first
@@ -130,7 +165,7 @@ def _social_after_load():
     if s is None:
         return
     for k, v in SocialState().__dict__.items():
-        if not hasattr(s, k):
+        if k not in s.__dict__:
             setattr(s, k, v)
 
 
@@ -258,14 +293,17 @@ class SocialApp(App):
     # Likes -------------------------------------------------------------------
 
     def like(self, post_uid, effects=False):
-        """Makes the player like a post. Its on_like effects only run with
-        effects=True (and never twice); otherwise they are used up."""
+        """Makes the player like a post.
+
+        With effects=True the post's on_like effects run, unless they already
+        have. With the default effects=False they are left for later, so
+        the player's own first like still runs them.
+        """
         p = self._get(post_uid)
         p.liked = True
-        if not p.like_effects_done:
+        if effects and not p.like_effects_done:
             p.like_effects_done = True
-            if effects:
-                run_effects(p.like_effects)
+            run_effects(p.like_effects)
 
     def unlike(self, post_uid):
         self._get(post_uid).liked = False
@@ -341,10 +379,16 @@ class SocialApp(App):
         return contact(who).name
 
 
+def social_app():
+    """The registered Social app, which may be a game's SocialApp subclass."""
+    return get_app("social")
+
+
 def _social_notify(text, sound="notification"):
+    app = social_app()
     if not cfg.sounds.get(sound):
         sound = "notification"
-    notify(__(social.name), text, app_id=social.id, sound=sound)
+    notify(__(app.name), text, app_id=app.id, sound=sound)
 
 
 def social_count(n):
@@ -358,9 +402,21 @@ def social_count(n):
     return str(n)
 
 
+# Built displayables, reused across redraws. A plain dict: never saved and
+# never rolled back. Keys include the theme and text scale, since both change
+# what gets built.
+_social_memo = _dict()
+
+
 def social_icon(name, key, size):
     """One of the app's white icons ("heart", "heart_outline", "comment"), tinted."""
-    return Transform(tinted(social_asset_dir + name + ".png", key), xysize=(size, size))
+    k = ("icon", name, key, size, theme_name(), text_scale())
+    rv = _social_memo.get(k)
+    if rv is None:
+        if len(_social_memo) > 500:
+            _social_memo.clear()
+        rv = _social_memo[k] = Transform(tinted(social_asset_dir + name + ".png", key), xysize=(size, size))
+    return rv
 
 
 def social_card_width():
@@ -375,10 +431,10 @@ class SocialToggleLike(PhoneAction):
         self.post_uid = post_uid
 
     def run(self):
-        social.toggle_like(self.post_uid)
+        social_app().toggle_like(self.post_uid)
 
     def get_selected(self):
-        return social.liked(self.post_uid)
+        return social_app().liked(self.post_uid)
 
 
 class SocialUseOption(PhoneAction):
@@ -387,7 +443,7 @@ class SocialUseOption(PhoneAction):
         self.option_uid = option_uid
 
     def run(self):
-        social.use_option(self.post_uid, self.option_uid)
+        social_app().use_option(self.post_uid, self.option_uid)
 
 
 class SocialToggleFollow(PhoneAction):
@@ -395,18 +451,19 @@ class SocialToggleFollow(PhoneAction):
         self.who = contact_id(who)
 
     def run(self):
-        if social.following(self.who):
-            social.unfollow(self.who)
+        app = social_app()
+        if app.following(self.who):
+            app.unfollow(self.who)
         else:
-            social.follow(self.who)
+            app.follow(self.who)
 
     def get_selected(self):
-        return social.following(self.who)
+        return social_app().following(self.who)
 
 
 class SocialMarkSeen(PhoneAction):
     def run(self):
-        social.mark_seen()
+        social_app().mark_seen()
 
 
 """renpy
@@ -415,7 +472,24 @@ default phone.social_state = phone.SocialState()
 init -910 python in phone:
 """
 
+# `phone.social` is the app instance scripts and screens talk to. A game can
+# replace it with a subclass from its own init code:
+#
+#     init python:
+#         class MySocial(phone.SocialApp):
+#             name = "Snapgram"
+#         phone.register_app(MySocial())
+#
+# The block at init 905 below points `phone.social` at whatever ended up
+# registered, and the screen actions always look the app up by id.
 social = register_app(SocialApp())
 
 if _social_after_load not in store.config.after_load_callbacks:
     store.config.after_load_callbacks.append(_social_after_load)
+
+
+"""renpy
+init 905 python in phone:
+"""
+
+social = get_app("social")

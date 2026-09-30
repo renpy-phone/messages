@@ -5,6 +5,47 @@ define _test_social_pal = phone.Contact("test_social_pal", "Pat", handle="pat.sn
 init python:
     phone.social_profile("test_social_pal", bio="Film photos only.", followers=120, following=80)
 
+    def _test_social_buttons(kind, screen=None):
+        """Buttons in the open phone whose action class is `kind`."""
+        rv = []
+        seen = set()
+
+        def walk(d):
+            if d is None or id(d) in seen:
+                return
+            seen.add(id(d))
+            if isinstance(d, renpy.display.behavior.Button):
+                a = d.action
+                if type(a).__name__ == kind and (screen is None or getattr(a, "screen", None) == screen):
+                    rv.append(d)
+            for c in d.visit() or ():
+                walk(c)
+
+        walk(renpy.get_screen("phone", layer=phone.cfg.layer))
+        return rv
+
+    def _test_social_scroll_to_end():
+        """Scrolls every viewport in the open phone to the bottom."""
+        seen = set()
+
+        def walk(d):
+            if d is None or id(d) in seen:
+                return
+            seen.add(id(d))
+            if isinstance(d, renpy.display.viewport.Viewport):
+                d.yadjustment.change(d.yadjustment.range)
+            for c in d.visit() or ():
+                walk(c)
+
+        walk(renpy.get_screen("phone", layer=phone.cfg.layer))
+
+    class _TestSocialSubclass(phone.SocialApp):
+        toggles = 0
+
+        def toggle_like(self, post_uid):
+            _TestSocialSubclass.toggles += 1
+            phone.SocialApp.toggle_like(self, post_uid)
+
 default _test_social_aff = 0
 default _test_social_name = "Sam"
 default _test_social_uid = None
@@ -79,7 +120,19 @@ label test_social_likes:
     $ s.unlike(uid2)
     $ expect(not s.liked(uid2), "unlike() from script")
     $ phone.SocialToggleLike(uid2)()
-    $ expect_eq(_test_social_aff, 1, "a script like uses up on_like")
+    $ expect_eq(_test_social_aff, 2, "a script like leaves on_like for the player's first like")
+    $ phone.SocialToggleLike(uid2)()
+    $ phone.SocialToggleLike(uid2)()
+    $ expect_eq(_test_social_aff, 2, "and it still runs only once")
+
+    # A script like on an already liked post, then the player toggles.
+    $ uid4 = s.post("lucy", "demo photo cat", on_like=IncrementVariable("_test_social_aff"), notify=False)
+    $ s.like(uid4)
+    $ phone.SocialToggleLike(uid4)()
+    $ expect(not s.liked(uid4), "the player can unlike a script like")
+    $ phone.SocialToggleLike(uid4)()
+    $ expect_eq(_test_social_aff, 3, "the player's first like after a script like runs on_like")
+    $ _test_social_aff = 1
 
     $ uid3 = s.post("lucy", "demo photo cat", on_like=IncrementVariable("_test_social_aff"), notify=False)
     $ s.like(uid3, effects=True)
@@ -171,7 +224,7 @@ label test_social_pickle:
         copy = loads(dumps(phone.social_state))
         expect_eq([p.uid for p in copy.posts], [p.uid for p in phone.social_state.posts], "posts survive pickling")
         cp = copy.posts[1]
-        expect(cp.liked and cp.like_effects_done, "like flags survive pickling")
+        expect(cp.liked and not cp.like_effects_done, "like flags survive pickling")
         expect_eq([c.text for c in cp.comments], ["Yo"], "comments survive pickling")
         expect_eq(cp.options[0].text, "Hey", "options survive pickling")
         expect_eq(len(cp.options[0].effects), 1, "option effects survive pickling")
@@ -190,6 +243,71 @@ label test_social_pickle:
             except TypeError:
                 pass
         expect_eq(len(phone.social_state.posts), 2, "rejected posts are not added")
+    return
+
+
+label test_social_load_more:
+    $ s = phone.social
+    $ old_max = phone.cfg.social_max_rendered
+    $ phone.cfg.social_max_rendered = 3
+    python:
+        for i in range(7):
+            s.post("lucy", "demo photo beach", "Post {}".format(i), notify=False)
+    $ renpy.hide_screen("phone_notification", layer=phone.cfg.layer)
+    $ phone.show("social")
+    $ wait(0.2)
+    $ expect_eq(len(_test_social_buttons("SocialToggleLike")), 3, "the feed builds only the first batch")
+    $ more = _test_social_buttons("SetLocalVariable")
+    $ expect_eq(len(more), 1, "the feed has a Load more button")
+    $ _test_social_scroll_to_end()
+    $ shot("social-load-more")
+    $ more[0].action()
+    $ wait(0.2)
+    $ expect_eq(len(_test_social_buttons("SocialToggleLike")), 6, "Load more adds a batch")
+    $ _test_social_buttons("SetLocalVariable")[0].action()
+    $ wait(0.2)
+    $ expect_eq(len(_test_social_buttons("SocialToggleLike")), 7, "Load more stops at the last post")
+    $ expect_eq(_test_social_buttons("SetLocalVariable"), [], "no Load more once everything is shown")
+
+    $ phone.Navigate("phone_social_profile", who="lucy")()
+    $ wait(0.2)
+    $ expect_eq(len(_test_social_buttons("Navigate", "phone_social_post")), 3, "the profile grid builds the first batch")
+    $ _test_social_buttons("SetLocalVariable")[0].action()
+    $ wait(0.2)
+    $ expect_eq(len(_test_social_buttons("Navigate", "phone_social_post")), 6, "the grid loads more")
+    $ phone.close()
+    $ phone.cfg.social_max_rendered = old_max
+    return
+
+
+label test_social_memo_and_saves:
+    $ s = phone.social
+    $ a = phone.social_icon("heart", "social_like", 30)
+    $ expect(a is phone.social_icon("heart", "social_like", 30), "icons are memoized")
+    $ expect(a is not phone.social_icon("heart", "social_like", 31), "the memo is keyed on the size")
+    $ phone.set_theme("dark")
+    $ expect(a is not phone.social_icon("heart", "social_like", 30), "the memo is keyed on the theme")
+    $ phone.set_theme("light")
+
+    # Saves from before a field existed fall back to class defaults.
+    $ uid = s.post("lucy", "demo photo beach", comment_options=["Hi"], comments=[("max", "Yo")], notify=False)
+    $ p = s.get(uid)
+    python:
+        for obj, field in ((p, "seen"), (p, "like_effects_done"), (p.comments[0], "text"), (p.options[0], "used")):
+            delattr(obj, field)
+    $ expect_eq((p.seen, p.like_effects_done, p.comments[0].text, p.options[0].used), (True, False, "", False), "missing fields use class defaults")
+    $ delattr(phone.social_state, "bios")
+    $ phone._social_after_load()
+    $ s.set_bio("lucy", "Loaded")
+    $ expect_eq(phone.social_state.bios, {"lucy": "Loaded"}, "after_load restores missing state fields")
+    $ expect(not hasattr(phone.SocialState, "bios"), "no shared class-level dict")
+
+    # A game can replace the app with a subclass; actions look it up by id.
+    $ original = phone.apps["social"]
+    $ phone.apps["social"] = _TestSocialSubclass()
+    $ phone.SocialToggleLike(uid)()
+    $ expect_eq(_TestSocialSubclass.toggles, 1, "actions use the registered app")
+    $ phone.apps["social"] = original
     return
 
 

@@ -2,6 +2,9 @@
 
 ## The feed: every post, newest first.
 screen phone_social():
+    # Only the newest posts are built; "Load more" adds another batch. The
+    # name is unique because the shell reuses one scope for every app screen.
+    default social_feed_shown = phone.cfg.social_max_rendered
     $ posts = phone.social_state.posts
 
     # Posts that arrive while the feed is on screen count as seen.
@@ -29,8 +32,10 @@ screen phone_social():
 
             if posts:
                 use phone_list:
-                    for p in posts:
+                    for p in posts[:social_feed_shown]:
                         use phone_social_card(p)
+                    if len(posts) > social_feed_shown:
+                        use phone_social_load_more(SetLocalVariable("social_feed_shown", social_feed_shown + phone.cfg.social_max_rendered))
             else:
                 use phone_empty(_("No posts yet.\nWhen people you follow share\nphotos, you'll see them here."))
 
@@ -188,6 +193,7 @@ screen phone_social_post(post):
 
 ## A profile: `who` is a contact id, or None for the player.
 screen phone_social_profile(who=None):
+    default social_grid_shown = phone.cfg.social_max_rendered
     $ posts = phone.social.posts_by(who)
     $ width = phone.social_card_width()
     $ pad = phone.px(16)
@@ -243,15 +249,29 @@ screen phone_social_profile(who=None):
                     spacing gap
                     box_wrap_spacing gap
 
-                    for p in posts:
+                    for p in posts[:social_grid_shown]:
                         button:
                             style "phone_social_tile"
                             xysize (cell, cell)
                             action phone.Navigate("phone_social_post", post=p.uid)
                             alt _("Photo")
                             add phone.cover(p.image, cell, cell)
+                if len(posts) > social_grid_shown:
+                    use phone_social_load_more(SetLocalVariable("social_grid_shown", social_grid_shown + phone.cfg.social_max_rendered))
             else:
                 fixed:
                     xsize width
                     ysize phone.px(200)
                     text _("No posts yet.") style "phone_empty_text"
+
+
+## The button at the end of a list that builds the next batch of posts.
+screen phone_social_load_more(action):
+    frame:
+        style "empty"
+        padding (phone.px(14), phone.px(14))
+        xfill True
+        button:
+            style "phone_social_option_button"
+            action action
+            text _("Load more") style "phone_social_option_button_text" xalign 0.5
