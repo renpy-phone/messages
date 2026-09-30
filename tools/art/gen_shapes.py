@@ -1,9 +1,9 @@
 #!/usr/bin/env python3
-"""Generate the framework's placeholder art (white shapes, tinted at runtime).
+"""Generate the white base shapes that tools/art/ tints into placeholder art.
 
 Pure standard library so it runs anywhere. Re-run after changing a shape:
 
-    python3 tools/gen_assets.py
+    python3 tools/art/gen_shapes.py
 """
 
 import math
@@ -11,7 +11,7 @@ import os
 import struct
 import zlib
 
-OUT = os.path.join(os.path.dirname(__file__), "..", "game", "phone", "images")
+OUT = os.path.join(os.path.dirname(__file__), "shapes")
 SAMPLES = 4  # supersampling per axis for anti-aliased edges
 
 

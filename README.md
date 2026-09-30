@@ -2,17 +2,17 @@
 
 A drop-in smartphone for Ren'Py 8 games. It includes Messages (branching texts and group chats), a photo feed ("Photogram"), Phone calls, Settings and Wallpapers. You can also add your own apps.
 
-- **Drop-in:** copy one folder, write a few lines of script.
+- **Drop-in:** copy two folders, write a few lines of script.
 - **Save and rollback safe:** story state lives in `default` variables and refers to contacts by id, so saves survive game updates.
 - **Resolution independent:** sizes are authored at 1080p and scaled, so the phone looks the same at 720p, 1080p and 1440p/4K.
 - **Themeable:** light and dark themes, player text size and 24-hour clock settings, restylable `phone_*` styles.
-- **No art required:** icons, bubbles, avatars and wallpapers are drawn from a few white shapes tinted at runtime. Swap in your own images whenever you like.
+- **Art-driven:** every icon, frame, button and wallpaper is an image file under `game/gui/phone/`, organised by area, with idle, hover and selected variants. Placeholder art is included, so it works out of the box; replace the files to give the phone your game's look.
 
 Requires Ren'Py 8.1 or newer (it uses `_ren.py` files); tested on 8.5.3. The code stays Python 3.9 compatible.
 
 ## Install
 
-1. Copy `game/phone/` into your game's `game/` folder, keeping the name `phone`.
+1. Copy `game/phone/` (the code) and `game/gui/phone/` (the art) into your game's `game/` folder, keeping the paths.
 2. Define contacts and use the API from your script. That's it.
 
 The rest of this repository is a demo project and its test suite. Open the repository folder in the Ren'Py launcher to play the demo.
@@ -66,7 +66,7 @@ A floating phone button (with a badge for unread items) appears in the corner wh
 | `phone.add_contact(c)`, `phone.rename_contact(c, name)`, `phone.set_avatar(c, img)`, `phone.set_call_label(c, label)` | Per-playthrough contact changes. |
 | `phone.set_player_name(name, handle=None)` | The player's name and social handle for this playthrough (`"[povname]"` works). Defaults to `cfg.player_name`. |
 
-`phone.Contact(id, name=None, avatar=None, character=None, number=None, handle=None, color=None, call_label=None, known=False)`: the name defaults to the Character's name and supports interpolation (`"[sister_name]"`). Without an avatar, a colored circle with the initial is drawn.
+`phone.Contact(id, name=None, avatar=None, character=None, number=None, handle=None, color=None, call_label=None, known=False)`: the name defaults to the Character's name and supports interpolation (`"[sister_name]"`). Without an avatar, `common/avatar_default` is drawn with the contact's initial on it.
 
 ## Messages
 
@@ -175,8 +175,45 @@ init -2 python in phone:
 
 `lint` warns if `cfg` sizes, fonts or theme colors are changed too late.
 
-- **Styles:** every style is named `phone_*` and can be overridden with your own `style phone_...:` statements at the normal init level. Colors come from `cfg.themes` (keys like `bg`, `surface`, `text`, `accent`, `bubble_in`, `bubble_out`), so theme switching works.
-- **Icons:** each app draws a `glyph` on a colored tile. Set `App.icon` to an image to use real artwork.
+- **Styles:** every style is named `phone_*` and can be overridden with your own `style phone_...:` statements at the normal init level.
+- **Colors:** text colors and flat fills (panels, dividers) come from `cfg.themes`, with keys like `bg`, `surface`, `text` and `accent`, so theme switching works. Everything else is art (see below).
+
+## Art
+
+Every shape, icon and picture the phone draws is an image file under `game/gui/phone/`, grouped by area:
+
+```
+gui/phone/
+  device/frame_idle.png            the phone body (9-slice, 48 px borders)
+  status/signal_idle.png           status bar icons; status/wallpaper/* over the wallpaper
+  nav/back|home|close_<state>.png  navigation bar buttons
+  hud/button_<state>.png           floating phone button
+  common/                          shared: button, badge, banner, back, chevron, check,
+                                   toggle, scrollbar, avatar_default, avatar_mask
+  apps/<app id>/icon_<state>.png   home screen icons
+  messages/  social/  calls/  settings/  wallpapers/   each app's own art
+  themes/dark/...                  optional per-theme versions of any file above
+```
+
+- **States.** A file is named `<name>_<state>.png`. Only `idle` is required; the rest fall back when missing:
+
+  | state | falls back to |
+  |---|---|
+  | `hover` | `idle` |
+  | `selected_idle` | `selected`, then `idle` |
+  | `selected_hover` | `selected_hover`, `selected`, `hover`, then `idle` |
+  | `insensitive` | `idle` |
+
+  A plain `<name>.png` also counts as idle, and `.webp` and `.jpg` work too.
+- **Themes.** With the dark theme active, `gui/phone/themes/dark/<name>_<state>.png` is used when it exists, otherwise the shared file. Add a folder per theme in `cfg.themes`.
+- **Scale.** Draw art at 1080p size, or larger for icons; they are fitted to their slot. Nine-slice frames (bubbles, buttons, the device) keep their border widths in 1080p pixels, and the borders each one uses are noted in `game/phone/screens/styles.rpy` and the app style files.
+- **Missing art.** `lint` lists any required file that can't be found. In developer mode a missing image shows as a magenta box.
+- **Placeholder art.** The shipped placeholders are rendered by the engine from `tools/art/*.rpy` with `tools/art/render_art.sh`. You only need this to change the placeholders; to restyle your game, replace the files.
+- **In your own screens:**
+  - `phone.art(name, state="idle", size=None)` returns one image.
+  - `phone.art_states(name, size)` gives the idle, hover and other properties for an `imagebutton`.
+  - `phone.art_frame(name, borders)` returns a nine-slice frame.
+  - `phone.art_layer_states(name, size, "background" or "foreground", **placement)` puts a state-aware icon inside a `button`.
 
 ## Writing your own app
 
@@ -189,9 +226,7 @@ init python in phone:
     class BankApp(App):
         id = "bank"
         name = _("Bank")
-        screen = "phone_bank"
-        glyph = "✦"
-        color = "#2e7d32"
+        screen = "phone_bank"   # icon art: gui/phone/apps/bank/icon_idle.png (+ _hover)
 
         def reset(self):
             global bank_state
@@ -220,14 +255,15 @@ screen phone_bank():
 ## Project layout
 
 ```
-game/phone/            the framework (copy this)
-  core/                config, contacts, apps registry, state, actions, API
+game/phone/            the framework code (copy this)
+  core/                config, contacts, apps registry, state, actions, art lookup, API
   screens/             phone shell, shared components, HUD, styles
   apps/<app>/          messages, social, calls, settings, wallpapers
-  images/              white shapes tinted at runtime (tools/gen_assets.py)
-game/demo/, script.rpy, options.rpy   demo project
+game/gui/phone/        the framework art (copy this too, then replace the images)
+game/demo/, game/images/demo/, script.rpy, options.rpy   demo project
 tests/                 in-engine tests (linked into a temp project by tools/test.sh)
-tools/test.sh          lint + tests at 720p, 1080p and 1440p
+tools/test.sh          name check, lint, and tests at 720p, 1080p and 1440p
+tools/art/             placeholder art specs, render_art.sh, base shapes
 ```
 
 ## Development
