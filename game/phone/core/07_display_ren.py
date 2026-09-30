@@ -97,6 +97,36 @@ def is_image(value):
     return renpy.has_image(value) or (renpy.loadable(value) and not value.endswith((".txt", ".rpy")))
 
 
+# Full-display backgrounds for app screens (e.g. a call screen). While such a
+# screen is showing, the background is drawn behind the whole display and the
+# status and navigation bars become transparent, as on the home screen.
+screen_backgrounds = {}  # screen name -> displayable, color or theme key
+
+
+def set_screen_background(screen, background):
+    """Registers a full-display background for `screen` (call at init time).
+
+    `background` is a displayable, a color such as "#101010", or a theme
+    key such as "bg". None removes it.
+    """
+    if background is None:
+        screen_backgrounds.pop(screen, None)
+    else:
+        screen_backgrounds[screen] = background
+
+
+def screen_background(screen):
+    """The displayable to draw behind `screen`, or None."""
+    bg = screen_backgrounds.get(screen)
+    if bg is None:
+        return None
+    if isinstance(bg, str) and (bg in theme() or bg in cfg.themes.get("light", {})):
+        return Solid(color(bg))
+    if isinstance(bg, str) and bg.startswith("#"):
+        return Solid(bg)
+    return cover(bg, *display_size())
+
+
 # Geometry of the display, in real pixels. Custom app screens can use these.
 
 def display_size():

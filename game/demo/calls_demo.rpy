@@ -10,10 +10,9 @@ label demo_calls:
     $ phone.set_time("18:20")
     "It's a quiet evening when your phone starts to ring again."
 
-    # The call is a label: the phone rings until the player answers.
-    $ answered = phone.incoming_call("eileen", label="demo_calls_eileen")
-    if not answered:
-        "You let it go to voicemail. Eileen will understand."
+    # The phone rings until the player answers or declines. The call is the
+    # label; the story continues on the next line when it returns.
+    $ phone.incoming_call("eileen", label="demo_calls_eileen", decline_label="demo_calls_eileen_declined")
 
     "You put the kettle on."
     $ phone.set_time("18:34")
@@ -32,6 +31,11 @@ label demo_calls_eileen:
     e "Hey! Are you still coming to the gallery opening on Saturday?"
     e "Lucy says she's bringing the whole art club."
     e "Great. See you there!"
+    return
+
+
+label demo_calls_eileen_declined:
+    "You let it go to voicemail. Eileen will understand."
     return
 
 

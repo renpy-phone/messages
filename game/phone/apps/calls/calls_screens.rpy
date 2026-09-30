@@ -310,8 +310,10 @@ screen phone_calls_round_button(glyph, key, caption, action, size=76, label_styl
 
 
 ## In-call overlay: sits at the top of the screen during the conversation.
-## It is not modal, so the dialogue below it works as usual.
+## It is not modal, so the dialogue below it works as usual. It is one of
+## config.overlay_screens and shows whenever a call is active.
 screen phone_calls_active():
+    zorder 60
     style_prefix "phone"
 
     $ call = phone.active_call()

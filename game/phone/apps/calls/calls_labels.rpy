@@ -1,8 +1,9 @@
-## Runs a call label as a story scene, with the in-call overlay on screen.
-## phone.incoming_call() and phone.dial() invoke it in a nested context, so
-## the story (or the open phone) carries on where it was once it returns.
-label phone_calls_session(_phone_call_who, _phone_call_uid, _phone_call_label):
+## Runs a call label as part of the story, with the in-call pill on screen.
+## phone.incoming_call() and phone.dial() call it with renpy.call(); see the
+## notes at the top of calls_ren.py for where the story continues.
+label phone_calls_session(_phone_call_who, _phone_call_uid, _phone_call_label, _phone_call_reopen=None):
+    $ phone.close()
     $ phone._begin_call(_phone_call_who, _phone_call_uid, label=True)
     call expression _phone_call_label
-    $ phone.end_call()
+    $ phone._session_end(_phone_call_reopen)
     return

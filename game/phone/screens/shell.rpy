@@ -14,6 +14,9 @@ screen phone():
     style_prefix "phone"
 
     $ current_screen, current_kwargs = phone.state.current()
+    $ screen_bg = phone.screen_background(current_screen) if current_screen is not None else None
+    # Transparent status and nav bars over a wallpaper or a screen background.
+    $ transparent_bars = current_screen is None or screen_bg is not None
 
     if phone.cfg.dim_background:
         add phone.cfg.dim_background
@@ -46,11 +49,13 @@ screen phone():
                     add phone.color("wallpaper")
                 else:
                     add phone.cover(wallpaper, *phone.display_size())
+            elif screen_bg is not None:
+                add screen_bg
             else:
                 add phone.color("bg")
 
             vbox:
-                use phone_status_bar(on_wallpaper=current_screen is None)
+                use phone_status_bar(on_wallpaper=transparent_bars)
 
                 fixed:
                     style "phone_content"
@@ -60,7 +65,7 @@ screen phone():
                     else:
                         use expression current_screen pass (**current_kwargs)
 
-                use phone_nav_bar(on_wallpaper=current_screen is None)
+                use phone_nav_bar(on_wallpaper=transparent_bars)
 
 
 screen phone_status_bar(on_wallpaper=False):

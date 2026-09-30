@@ -21,12 +21,27 @@ def show(app_id=None, screen=None, **kwargs):
     mutated()
 
 
+_open_next = None  # (app_id, screen, kwargs) for the next phone.open()
+
+
+def open_next(app_id=None, screen=None, **kwargs):
+    """Makes the next phone.open() show this app and screen instead of the
+    ones it is given. Used when the statement that opened the phone runs
+    again, e.g. after a phone call made from it.
+    """
+    global _open_next
+    _open_next = (app_id, screen, dict(kwargs))
+
+
 def open(app_id=None, screen=None, **kwargs):
     """Shows the phone and waits until the player closes it.
 
     `$ phone.open("messages", "phone_messages_thread", thread="alice")`
     """
-    global _called
+    global _called, _open_next
+    if _open_next is not None:
+        app_id, screen, kwargs = _open_next
+        _open_next = None
     if app_id is None:
         state.home()
     else:
