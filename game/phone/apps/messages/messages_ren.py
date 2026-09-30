@@ -107,9 +107,43 @@ def short_title(tid, limit=20):
     return _shorten(thread_title(tid), limit)
 
 
+# Displayables built for the screens, reused across renders. Not saved: it is
+# a plain dict created at init and never reassigned.
+_memo_cache = python_dict()
+
+
+def _memo(key, build):
+    """build() once per key (plus theme and text size); no caching when the
+    key cannot be hashed, e.g. for an unhashable displayable."""
+    key = key + (theme_name(), text_scale())
+    try:
+        rv = _memo_cache.get(key)
+    except TypeError:
+        return build()
+    if rv is None:
+        if len(_memo_cache) > 500:
+            _memo_cache.clear()
+        rv = _memo_cache[key] = build()
+    return rv
+
+
+def _avatar_key(cid):
+    c = contact(cid)
+    return (cid, c.avatar, c.initial(), c.tint())
+
+
 def thread_avatar(tid, size):
     """Round avatar of a conversation; groups show their first two members."""
     size = int(size)
+    g = groups.get(tid)
+    if g is None:
+        key = ("avatar",) + _avatar_key(tid)
+    else:
+        key = ("group", tid, g.avatar) + tuple(_avatar_key(m) for m in g.members[:2])
+    return _memo(key + (size,), lambda: _thread_avatar(tid, size))
+
+
+def _thread_avatar(tid, size):
     g = groups.get(tid)
     if g is None:
         return avatar(tid, size)
@@ -194,12 +228,17 @@ class Chat(object):
 
     def say(self, text, sender=None):
         """An incoming message. In a group, `sender` says who wrote it."""
-        self.items.append(_Item(TEXT, text=text, sender=_sender_id(sender)))
-        return self
+        return self._add(_Item(TEXT, text=text, sender=_sender_id(sender)))
 
     def image(self, img, sender=None):
         """An incoming picture (image name or displayable)."""
-        self.items.append(_Item(IMAGE, image=img, sender=_sender_id(sender)))
+        return self._add(_Item(IMAGE, image=img, sender=_sender_id(sender)))
+
+    def _add(self, item):
+        # Groups defined later in the scripts are checked by send() instead.
+        if self.who is not None and self.who in groups:
+            _validate(self.who, [item])
+        self.items.append(item)
         return self
 
     def me(self, text, image=None):
@@ -219,9 +258,15 @@ class Chat(object):
             raise Exception("phone.Chat.choice() needs at least one Reply.")
         last = self.items[-1] if self.items else None
         if last is not None and last.kind in _MESSAGE_KINDS and last.replies is None:
-            self.items[-1] = last.with_replies(replies)
+            item = last.with_replies(replies)
         else:
-            self.items.append(_Item(_PROMPT, replies=replies))
+            item = _Item(_PROMPT, replies=replies)
+        if self.who is not None and self.who in groups:
+            _validate(self.who, [item])
+        if item.kind == _PROMPT:
+            self.items.append(item)
+        else:
+            self.items[-1] = item
         return self
 
     def effect(self, *actions):
@@ -242,6 +287,7 @@ class Chat(object):
         """Queues a copy of this chat and delivers it (see module docs)."""
         if self.who is None:
             raise Exception("phone.Chat.send(): this Chat has no contact or group.")
+        _validate(self.who, self.items)
         _enqueue(self.who, list(self.items))
         return self
 
@@ -251,9 +297,30 @@ def _sender_id(sender):
 
 
 # Saved state -----------------------------------------------------------------
+#
+# Every saved class declares class-level defaults, and fills in missing
+# containers when unpickled, so fields added in later versions load from
+# older saves.
 
-class Entry(object):
+class _Saved(object):
+    _containers = ()  # (field, factory) for mutable fields
+
+    def __setstate__(self, d):
+        for name, factory in self._containers:
+            if name not in d:
+                d[name] = factory()
+        self.__dict__.update(d)
+
+
+class Entry(_Saved):
     """A delivered message in a conversation log."""
+
+    uid = 0
+    kind = TEXT
+    text = None
+    image = None
+    sender = None
+    time = None
 
     def __init__(self, uid, kind, text=None, image=None, sender=None, time=None):
         self.uid = uid
@@ -271,8 +338,13 @@ class Entry(object):
         return self.kind in (TEXT, IMAGE)
 
 
-class Option(object):
+class Option(_Saved):
     """A reply offered to the player; matched by uid, never by text."""
+
+    uid = 0
+    text = None
+    image = None
+    reply = None
 
     def __init__(self, uid, text, image, reply):
         self.uid = uid
@@ -284,7 +356,13 @@ class Option(object):
         return "<phone reply option {} {!r}>".format(self.uid, self.text)
 
 
-class Conversation(object):
+class Conversation(_Saved):
+    _containers = (("log", list), ("pending", list))
+    id = None
+    unread = 0
+    choice = None
+    stamp = 0
+
     def __init__(self, tid):
         self.id = tid
         self.log = []  # delivered Entries
@@ -302,7 +380,10 @@ class Conversation(object):
         return False
 
 
-class MessagesState(object):
+class MessagesState(_Saved):
+    _containers = (("threads", dict),)
+    version = 1
+
     def __init__(self):
         self.version = 1
         self.threads = {}  # thread id -> Conversation
@@ -351,16 +432,30 @@ def _animated(conv):
     return _typing_delay() > 0 and viewing(conv.id)
 
 
-def _check_items(tid, items):
-    if tid in groups:
-        for item in items:
-            if item.kind in (TEXT, IMAGE) and item.sender is None:
-                raise Exception("phone: messages in group {!r} need a sender, e.g. .say(text, sender=lucy).".format(tid))
+def _validate(tid, items, seen=None):
+    """Checks items for conversation `tid`, following every reply's `then`
+    (loops are fine). Raises before anything is queued or shown."""
+    if seen is None:
+        seen = python_set()
+    is_group = tid in groups
+    for item in items:
+        if is_group and item.kind in (TEXT, IMAGE) and item.sender is None:
+            raise Exception(
+                "phone: a message in group chat {!r} has no sender ({!r}). In a group use "
+                ".say(text, sender=...), and in Reply(then=...) use "
+                "phone.Chat().say(text, sender=...) instead of a plain string.".format(tid, item.text or item.image)
+            )
+        for reply in item.replies or ():
+            key = (tid, id(reply))
+            if key in seen:
+                continue
+            seen.add(key)
+            for t, its in _expand_then(reply.then, tid):
+                _validate(t, its, seen)
 
 
 def _enqueue(tid, items):
     """Appends items to a conversation and delivers what can be delivered."""
-    _check_items(tid, items)
     conv = messages_state.get(tid)
     conv.pending.extend(items)
     _dispatch(conv)
@@ -481,6 +576,10 @@ def thumbnail(img, width=None, ratio=0.75):
     """Rounded, cropped preview of an image message."""
     w = int(width or content_size()[0] * 0.55)
     h = int(w * ratio)
+    return _memo(("thumbnail", img, w, h), lambda: _thumbnail(img, w, h))
+
+
+def _thumbnail(img, w, h):
     return store.AlphaMask(
         cover(img, w, h),
         store.Fixed(rounded("#ffffff", "md" if w > px(100) else "sm"), xysize=(w, h)),
@@ -543,24 +642,35 @@ def choose(who, uid):
     if option is None:
         return False
 
+    # Validate before changing anything, so a bad follow-up can't leave the
+    # conversation half answered.
+    follow_ups = _expand_then(option.reply.then, conv.id)
+    for tid, items in follow_ups:
+        _validate(tid, items)
+
     conv.choice = None
     conv.log.append(Entry(state.next_uid(), ME, text=option.text, image=option.image, time=clock_text()))
     conv.stamp = state.next_uid()
-    run_effects(option.reply.effects)
 
     front = []
-    others = []
-    for tid, items in _expand_then(option.reply.then, conv.id):
-        _check_items(tid, items)
+    touched = [conv]
+    for tid, items in follow_ups:
         if tid == conv.id:
             front.extend(items)
         else:
-            others.append((tid, items))
+            other = messages_state.get(tid)
+            other.pending.extend(items)
+            if other not in touched:
+                touched.append(other)
     conv.pending[:0] = front
 
-    _dispatch(conv)
-    for tid, items in others:
-        _enqueue(tid, items)
+    # The follow-ups are queued before the effects run: a Jump or Call effect
+    # raises, and delivery still happens on the way out.
+    try:
+        run_effects(option.reply.effects)
+    finally:
+        for c in touched:
+            _dispatch(c)
     return True
 
 
@@ -572,9 +682,10 @@ def mark_read(who):
 
 # Public API --------------------------------------------------------------------
 
-def text(who, message, *replies):
-    """Sends one message, optionally offering replies: phone.text(eileen, "Hi!", phone.Reply("Hey"))."""
-    chat = Chat(who).say(message)
+def text(who, message, *replies, sender=None):
+    """Sends one message, optionally offering replies: phone.text(eileen, "Hi!", phone.Reply("Hey")).
+    In a group, `sender` says who wrote it."""
+    chat = Chat(who).say(message, sender=sender)
     if replies:
         chat.choice(*replies)
     chat.send()
@@ -681,7 +792,7 @@ class MessagesChoose(PhoneAction):
         _scroll_to_end(self.adjustment)
 
 
-def _lint():
+def _messages_lint():
     for gid, g in groups.items():
         if gid in contacts:
             print("phone: group id {!r} is also a contact id.".format(gid))
@@ -690,11 +801,12 @@ def _lint():
                 print("phone: group {!r} has member {!r}, which is not a defined contact.".format(gid, m))
 
 
-if _lint not in store.config.lint_hooks:
-    store.config.lint_hooks.append(_lint)
+if _messages_lint not in store.config.lint_hooks:
+    store.config.lint_hooks.append(_messages_lint)
 
 
-def _after_load():
+def _messages_after_load():
+    """Brings older saves of the Messages state up to date."""
     s = _state()
     if s is None:
         return
@@ -703,8 +815,8 @@ def _after_load():
             setattr(s, k, v)
 
 
-if _after_load not in store.config.after_load_callbacks:
-    store.config.after_load_callbacks.append(_after_load)
+if _messages_after_load not in store.config.after_load_callbacks:
+    store.config.after_load_callbacks.append(_messages_after_load)
 
 
 """renpy

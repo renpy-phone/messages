@@ -416,3 +416,103 @@ label test_messages_demo_chats:
         expect_eq(demo_messages_snacks, 1, "group reply effect")
         expect(phone.contact("lucy").known, "group members become known")
     return
+
+
+label test_messages_jump_effect:
+    # A Jump effect on a reply must not lose the reply's follow-up.
+    $ _tmsg_flag = None
+    $ phone.Chat("_tmsg_ann").say("Ready?").choice(
+        phone.Reply("Go", effects=Jump("_tmsg_jump_target"), then=["After the jump"])).say("And after that").send()
+    $ phone.choose_reply("_tmsg_ann", 0)
+    $ expect(False, "the Jump effect jumps")
+    return
+
+label _tmsg_jump_target:
+    $ expect_eq(_tmsg_texts("_tmsg_ann"), ["Ready?", "Go", "After the jump", "And after that"], "follow-up delivered despite the Jump")
+    $ expect(not phone.waiting_for_reply("_tmsg_ann"), "nothing left waiting")
+    $ expect_eq(phone.conversation("_tmsg_ann").pending, [], "nothing left queued")
+    return
+
+
+label test_messages_group_validation:
+    python:
+        def raises(fn):
+            try:
+                fn()
+            except Exception as e:
+                return "sender" in str(e)
+            return False
+
+        expect(raises(lambda: phone.Chat(_tmsg_crew).say("No sender")), "say() in a group without a sender fails at build time")
+        expect(raises(lambda: phone.Chat(_tmsg_crew).say("Q", sender=_tmsg_bob).choice(phone.Reply("A", then=["plain string"]))),
+               "plain strings in a group reply fail at build time")
+        expect(raises(lambda: phone.Chat(_tmsg_crew).say("Q", sender=_tmsg_bob).choice(
+            phone.Reply("A", then=phone.Chat().say("Ok").choice(phone.Reply("B", then=["deep"]))))),
+               "nested follow-ups are checked too")
+        # Chat() has no conversation yet, so send() is where it gets checked.
+        loose = phone.Chat().say("Q", sender=_tmsg_bob).choice(phone.Reply("A", then=["plain string"]))
+        loose.who = "_tmsg_crew"
+        expect(raises(loose.send), "send() checks the whole tree")
+        expect_eq(phone.chat_log("_tmsg_crew"), [], "nothing was sent")
+
+        # Loops through a reply's then= are fine.
+        loop = phone.Chat(_tmsg_crew)
+        loop.say("Again?", sender=_tmsg_bob).choice(phone.Reply("Yes", then=loop), phone.Reply("No"))
+        loop.send()
+        phone.choose_reply(_tmsg_crew, 0)
+        expect_eq([e.text for e in phone.chat_log(_tmsg_crew)], ["Again?", "Yes", "Again?"], "a looping chat works")
+
+        # choose() validates before changing anything (bypassing the send check).
+        bad = phone.Chat().say("Pick", sender=_tmsg_cat).choice(phone.Reply("Bad", then=["no sender"]))
+        phone.clear_chat(_tmsg_crew)
+        phone._enqueue("_tmsg_crew", list(bad.items))
+        expect(raises(lambda: phone.choose_reply(_tmsg_crew, 0)), "choose() refuses a follow-up without a sender")
+        expect_eq([e.text for e in phone.chat_log(_tmsg_crew)], ["Pick"], "the log is untouched")
+        expect(phone.waiting_for_reply(_tmsg_crew), "the choice is still offered")
+
+        phone.text(_tmsg_crew, "Hello group", sender=_tmsg_cat)
+        phone.text(_tmsg_crew, "Quiz", phone.Reply("A"), sender=_tmsg_bob)
+        expect(raises(lambda: phone.text(_tmsg_crew, "Nobody")), "text() to a group needs a sender")
+    return
+
+
+label test_messages_save_compat:
+    python:
+        from renpy.compat.pickle import dumps, loads
+        expect(phone._after_load in config.after_load_callbacks, "the core after-load hook is registered")
+        expect(phone._messages_after_load in config.after_load_callbacks, "the messages after-load hook is registered")
+        expect(phone._after_load is not phone._messages_after_load, "hooks do not shadow each other")
+
+        # Objects saved before a field existed load with its default.
+        conv = phone.Conversation("_tmsg_ann")
+        conv.log.append(phone.Entry(1, "text", text="Old"))
+        del conv.__dict__["pending"]
+        del conv.__dict__["stamp"]
+        del conv.log[0].__dict__["time"]
+        old = loads(dumps(conv))
+        expect_eq(old.pending, [], "missing lists are recreated")
+        expect_eq(old.stamp, 0, "missing values use class defaults")
+        expect_eq(old.log[0].time, None, "entries too")
+        old.pending.append("x")
+        expect_eq(phone.Conversation("_tmsg_bob").pending, [], "containers are not shared")
+
+        state = phone.MessagesState()
+        del state.__dict__["threads"]
+        expect_eq(loads(dumps(state)).threads, {}, "state threads recreated")
+    return
+
+
+label test_messages_display_cache:
+    python:
+        a = phone.thumbnail("demo photo cat")
+        expect(a is phone.thumbnail("demo photo cat"), "thumbnails are reused across renders")
+        expect(a is not phone.thumbnail("demo photo beach"), "per image")
+        expect(phone.thread_avatar("_tmsg_crew", 40) is phone.thread_avatar("_tmsg_crew", 40), "group avatars are reused")
+        b = phone.thread_avatar("_tmsg_ann", 40)
+        phone.set_avatar("_tmsg_ann", "demo photo cat")
+        expect(phone.thread_avatar("_tmsg_ann", 40) is not b, "an avatar change is picked up")
+        expect_eq(phone._memo(([1],), lambda: 5), 5, "unhashable keys are built without caching")
+        phone.set_theme("dark")
+        expect(phone.thumbnail("demo photo cat") is not a, "a theme change rebuilds")
+        phone.set_theme("light")
+    return
