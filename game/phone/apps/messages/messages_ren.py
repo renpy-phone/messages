@@ -82,6 +82,7 @@ def _group_by_id(gid):
 
 def group(id, name, members, avatar=None):
     """Defines a group chat: `define crew = phone.group("crew", "Crew", [lucy, max_])`."""
+    init_only("phone.group()")
     return Group(id, name, members, avatar)
 
 
@@ -107,26 +108,6 @@ def short_title(tid, limit=20):
     return _shorten(thread_title(tid), limit)
 
 
-# Displayables built for the screens, reused across renders. Not saved: it is
-# a plain dict created at init and never reassigned.
-_memo_cache = python_dict()
-
-
-def _memo(key, build):
-    """build() once per key (plus theme and text size); no caching when the
-    key cannot be hashed, e.g. for an unhashable displayable."""
-    key = key + (theme_name(), text_scale())
-    try:
-        rv = _memo_cache.get(key)
-    except TypeError:
-        return build()
-    if rv is None:
-        if len(_memo_cache) > 500:
-            _memo_cache.clear()
-        rv = _memo_cache[key] = build()
-    return rv
-
-
 def _avatar_key(cid):
     c = contact(cid)
     return (cid, c.avatar, c.initial(), c.tint())
@@ -140,10 +121,12 @@ def thread_avatar(tid, size):
         key = ("avatar",) + _avatar_key(tid)
     else:
         key = ("group", tid, g.avatar) + tuple(_avatar_key(m) for m in g.members[:2])
-    return _memo(key + (size,), lambda: _thread_avatar(tid, size))
+    return _messages_thread_avatar(tid, size, key)
 
 
-def _thread_avatar(tid, size):
+@memoized
+def _messages_thread_avatar(tid, size, key):
+    # `key` holds the avatar data, so a changed avatar makes a new cache entry.
     g = groups.get(tid)
     if g is None:
         return avatar(tid, size)
@@ -166,7 +149,7 @@ def _thread_avatar(tid, size):
 
 
 def sender_name(sender):
-    return cfg.player_name if sender is None else contact(sender).name
+    return player_name() if sender is None else contact(sender).name
 
 
 # Templates (static; built by Chat and Reply) ---------------------------------
@@ -576,10 +559,11 @@ def thumbnail(img, width=None, ratio=0.75):
     """Rounded, cropped preview of an image message."""
     w = int(width or content_size()[0] * 0.55)
     h = int(w * ratio)
-    return _memo(("thumbnail", img, w, h), lambda: _thumbnail(img, w, h))
+    return _messages_thumbnail(img, w, h)
 
 
-def _thumbnail(img, w, h):
+@memoized
+def _messages_thumbnail(img, w, h):
     return store.AlphaMask(
         cover(img, w, h),
         store.Fixed(rounded("#ffffff", "md" if w > px(100) else "sm"), xysize=(w, h)),
