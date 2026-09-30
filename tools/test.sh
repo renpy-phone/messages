@@ -16,8 +16,19 @@ RESOLUTIONS="${PHONE_RESOLUTIONS:-1280x720 1920x1080 2560x1440}"
 OUT="$(mktemp -d)"
 status=0
 
+# The tests live outside game/ so they never ship with the demo. Build a
+# throwaway project that links the real game/ entries plus tests/.
+PROJECT="$OUT/project"
+mkdir -p "$PROJECT/game"
+for entry in "$ROOT"/game/*; do
+    name="$(basename "$entry")"
+    case "$name" in saves|cache) continue ;; esac
+    ln -s "$entry" "$PROJECT/game/$name"
+done
+ln -s "$ROOT/tests" "$PROJECT/game/tests"
+
 echo "== lint"
-"$SDK/renpy.sh" "$ROOT" lint >"$OUT/lint.txt" 2>&1 || true
+"$SDK/renpy.sh" "$PROJECT" lint >"$OUT/lint.txt" 2>&1 || true
 # Lint reports problems before its statistics section.
 if sed '/^Statistics:/,$d' "$OUT/lint.txt" | grep -vE '^\s*$|lint report, generated at' | grep -q .; then
     sed '/^Statistics:/,$d' "$OUT/lint.txt"
@@ -30,7 +41,7 @@ for res in $RESOLUTIONS; do
     echo "== tests at $res"
     PHONE_TESTS=1 PHONE_TEST_RES="$res" PHONE_TEST_OUT="$OUT/$res.txt" PHONE_SHOTS="$SHOTS" \
         SDL_AUDIODRIVER=dummy timeout 300 xvfb-run -a -s "-screen 0 2600x1500x24" \
-        "$SDK/renpy.sh" "$ROOT" run >"$OUT/$res.log" 2>&1 || true
+        "$SDK/renpy.sh" "$PROJECT" run >"$OUT/$res.log" 2>&1 || true
     if [[ -f "$OUT/$res.txt" ]]; then
         grep -E '^(FAIL|ERROR|RESULT)' -A30 "$OUT/$res.txt" | grep -v '^RUN' || true
         grep -q '^RESULT PASS' "$OUT/$res.txt" || status=1

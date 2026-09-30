@@ -222,7 +222,7 @@ game/phone/            the framework (copy this)
   apps/<app>/          messages, social, calls, settings, wallpapers
   images/              white shapes tinted at runtime (tools/gen_assets.py)
 game/demo/, script.rpy, options.rpy   demo project
-game/tests/            in-engine tests
+tests/                 in-engine tests (linked into a temp project by tools/test.sh)
 tools/test.sh          lint + tests at 720p, 1080p and 1440p
 ```
 
@@ -234,6 +234,6 @@ RENPY_SDK=/path/to/renpy-8.5.3-sdk tools/test.sh --shots /tmp/shots
 
 This runs `renpy lint`, then starts the game headlessly under `xvfb-run` at three resolutions.
 
-- **Tests:** every label named `test_*` in `game/tests/` runs as a test, and failures are reported.
+- **Tests:** every label named `test_*` in `tests/` runs as a test, and failures are reported.
 - **Screenshots:** they go to `--shots`.
 - **CI:** GitHub Actions runs the same script on every push.
