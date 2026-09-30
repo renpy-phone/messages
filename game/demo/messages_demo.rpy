@@ -2,11 +2,12 @@
 
 default demo_dinner = None
 default demo_messages_snacks = 0
+default demo_messages_nickname = "stranger"
 
 define demo_crew = phone.group("demo_crew", "Weekend crew", [lucy, max_])
 
 # Chats are templates: define them once, send them whenever the story needs.
-define demo_eileen_dinner = phone.Chat(eileen).note(_("Today")).say(_("Hey [phone.cfg.player_name]! Are you free tonight?")).choice(
+define demo_eileen_dinner = phone.Chat(eileen).note(_("Today")).say(_("Hey [demo_messages_nickname]! Are you free tonight?")).choice(
     phone.Reply(
         _("Sure, what's up?"),
         then=phone.Chat().say(_("A new ramen place opened downtown.")).say(_("8pm?")).choice(

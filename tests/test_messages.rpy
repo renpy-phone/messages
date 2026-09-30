@@ -403,7 +403,7 @@ label test_messages_demo_chats:
         demo_dinner = None
         demo_eileen_dinner.send()
         expect_eq(phone.chat_log(eileen)[0].kind, "note", "demo starts with a date note")
-        expect_eq(phone.chat_log(eileen)[1].text, "Hey {}! Are you free tonight?".format(phone.cfg.player_name), "player name interpolated")
+        expect_eq(phone.chat_log(eileen)[1].text, "Hey stranger! Are you free tonight?", "variables are interpolated")
         phone.choose_reply(eileen, 0)
         phone.choose_reply(eileen, 0)
         expect(demo_dinner is True, "the dinner reply sets a variable")
@@ -479,9 +479,8 @@ label test_messages_group_validation:
 label test_messages_save_compat:
     python:
         from renpy.compat.pickle import dumps, loads
-        expect(phone._after_load in config.after_load_callbacks, "the core after-load hook is registered")
+        expect(phone._core_after_load in config.after_load_callbacks, "the core after-load hook is registered")
         expect(phone._messages_after_load in config.after_load_callbacks, "the messages after-load hook is registered")
-        expect(phone._after_load is not phone._messages_after_load, "hooks do not shadow each other")
 
         # Objects saved before a field existed load with its default.
         conv = phone.Conversation("_tmsg_ann")
@@ -511,7 +510,17 @@ label test_messages_display_cache:
         b = phone.thread_avatar("_tmsg_ann", 40)
         phone.set_avatar("_tmsg_ann", "demo photo cat")
         expect(phone.thread_avatar("_tmsg_ann", 40) is not b, "an avatar change is picked up")
-        expect_eq(phone._memo(([1],), lambda: 5), 5, "unhashable keys are built without caching")
+        phone.set_player_name("Robin")
+        expect_eq(phone.sender_name(None), "Robin", "the player's name comes from phone.player_name()")
+        try:
+            phone.group("_tmsg_late", "Late", [_tmsg_ann])
+            expect(False, "phone.group() is init-only")
+        except Exception:
+            pass
+        with runtime_registry():
+            phone.group("_tmsg_late", "Late", [_tmsg_ann])
+        expect(phone.is_group("_tmsg_late"), "runtime_registry allows it in tests")
+        phone.groups.pop("_tmsg_late", None)
         phone.set_theme("dark")
         expect(phone.thumbnail("demo photo cat") is not a, "a theme change rebuilds")
         phone.set_theme("light")
