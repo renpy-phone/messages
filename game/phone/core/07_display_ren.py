@@ -16,7 +16,7 @@ GLYPH_FONT = "DejaVuSans.ttf"  # ships with Ren'Py, has the symbols we use
 # Screens are re-evaluated on every interaction, so rebuilding avatars, icons
 # and cropped images each time adds up with long chat logs and feeds. Builders
 # below cache their result on everything it depends on. Not saved.
-_memo = {}
+_display_cache = {}
 
 
 def memoized(fn):
@@ -25,13 +25,13 @@ def memoized(fn):
     def wrapper(*args):
         key = (fn.__name__, args, theme_name(), text_scale(), store.config.screen_height)
         try:
-            rv = _memo.get(key)
+            rv = _display_cache.get(key)
         except TypeError:  # unhashable argument
             return fn(*args)
         if rv is None:
-            if len(_memo) > 4000:
-                _memo.clear()
-            rv = _memo[key] = fn(*args)
+            if len(_display_cache) > 4000:
+                _display_cache.clear()
+            rv = _display_cache[key] = fn(*args)
         return rv
 
     wrapper.__name__ = fn.__name__

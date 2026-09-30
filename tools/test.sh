@@ -27,6 +27,9 @@ for entry in "$ROOT"/game/*; do
 done
 ln -s "$ROOT/tests" "$PROJECT/game/tests"
 
+echo "== phone store names"
+if python3 "$ROOT/tools/check_names.py"; then echo "clean"; else status=1; fi
+
 echo "== lint"
 "$SDK/renpy.sh" "$PROJECT" lint >"$OUT/lint.txt" 2>&1 || true
 # Lint reports problems before its statistics section.
