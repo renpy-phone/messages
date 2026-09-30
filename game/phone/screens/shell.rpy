@@ -76,17 +76,13 @@ screen phone_status_bar(on_wallpaper=False):
 
         $ status_color = phone.color("status_text" if on_wallpaper else "text")
 
-        text phone.clock_text() style "phone_status_text" color status_color xalign 0.0 substitute False
+        add phone.clock("phone_status_text", status_color) xalign 0.0 yalign 0.5
         hbox:
             xalign 1.0
             yalign 0.5
             spacing phone.px(6)
             text "▂▄▆" style "phone_status_text" font phone.GLYPH_FONT color status_color size phone.px(14)
             text "[phone.state.battery]%" style "phone_status_text" color status_color
-
-        # Re-render once a second so the real-time clock keeps up.
-        if phone.state.clock is None:
-            timer 1.0 repeat True action NullAction()
 
 
 screen phone_nav_bar(on_wallpaper=False):
@@ -118,7 +114,7 @@ screen phone_home():
         spacing phone.px(24)
 
         null height phone.px(30)
-        text phone.clock_text() style "phone_home_clock" substitute False
+        add phone.clock("phone_home_clock") xalign 0.5
 
         vpgrid:
             cols phone.cfg.home_columns

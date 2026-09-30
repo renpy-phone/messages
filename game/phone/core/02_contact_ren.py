@@ -34,6 +34,7 @@ class Contact(python_object):
 
     def __init__(self, id, name=None, avatar=None, character=None, number=None,
                  handle=None, color=None, call_label=None, known=False):
+        init_only("phone.Contact()")
         if id in contacts and contacts[id] is not self:
             raise Exception("phone.Contact id {!r} is defined twice.".format(id))
 

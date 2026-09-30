@@ -23,6 +23,8 @@ class PhoneState(object):
         self.clock = None  # status bar text, None for the real time
         self.battery = 100
         self.wallpaper = None  # wallpaper id, None for cfg.default_wallpaper
+        self.player_name = None  # None: cfg.player_name
+        self.player_handle = None  # None: cfg.player_handle
 
     def next_uid(self):
         self.uid += 1
@@ -76,7 +78,7 @@ class PhoneState(object):
         self.contact_data[cid] = data
 
 
-def _after_load():
+def _core_after_load():
     """Brings saves from older framework versions up to date."""
     s = globals().get("state")
     if s is None:
@@ -86,6 +88,10 @@ def _after_load():
     for k, v in PhoneState().__dict__.items():
         if not hasattr(s, k):
             setattr(s, k, v)
+
+
+if _core_after_load not in store.config.after_load_callbacks:
+    store.config.after_load_callbacks.append(_core_after_load)
 
 
 """renpy

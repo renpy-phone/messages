@@ -117,7 +117,27 @@ class ToggleSetting(python_object):
     def action(self):
         if self.persistent:
             return store.ToggleField(store.persistent, self.variable, self.true_value, self.false_value)
+        return ToggleStoreSetting(self.variable, self.true_value, self.false_value)
+
+
+class ToggleStoreSetting(PhoneAction):
+    """ToggleVariable that also keeps the change if the game is saved while
+    the phone is still open (story variables are saved; see PhoneAction).
+    """
+
+    def __init__(self, variable, true_value=True, false_value=False):
+        self.variable = variable
+        self.true_value = true_value
+        self.false_value = false_value
+
+    def _toggle(self):
         return store.ToggleVariable(self.variable, self.true_value, self.false_value)
+
+    def run(self):
+        self._toggle()()
+
+    def get_selected(self):
+        return self._toggle().get_selected()
 
 
 class ActionSetting(python_object):
@@ -172,16 +192,19 @@ def add_toggle_setting(label, variable, description=None, persistent=False, sect
     Only the variable name is stored, so nothing here ends up in save files.
     Adding a row with the same label and section again replaces it.
     """
+    init_only("phone.add_toggle_setting()")
     return _add_setting(ToggleSetting(label, variable, description, persistent, section, true_value, false_value))
 
 
 def add_action_setting(label, action, description=None, section=None):
     """Adds a tappable row that runs a Ren'Py action (e.g. ShowMenu("preferences"))."""
+    init_only("phone.add_action_setting()")
     check_picklable(action, "phone.add_action_setting action")
     return _add_setting(ActionSetting(label, action, description, section))
 
 
 def remove_setting(label, section=None):
+    init_only("phone.remove_setting()")
     custom_settings[:] = [s for s in custom_settings if not (s.label == label and s.section == section)]
 
 

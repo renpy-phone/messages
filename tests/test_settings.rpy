@@ -146,11 +146,13 @@ label test_settings_custom:
         expect_eq(loads(dumps(hints.action())), hints.action(), "store toggle action pickles")
         expect_eq(loads(dumps(skip.action())).field, "_test_settings_skip", "persistent toggle action pickles")
 
-        # Re-adding a row replaces it rather than duplicating it.
-        phone.add_toggle_setting("Show hints", "_test_settings_hints", description="Replaced", section="Test")
-        expect_eq(len(phone.custom_setting_sections()[0][1]), 3, "no duplicates")
-        expect_eq(phone.custom_setting_sections()[0][1][0].description, "Replaced", "replaced")
-        phone.add_toggle_setting("Show hints", "_test_settings_hints", description="Test store toggle", section="Test")
+        # Re-adding a row replaces it rather than duplicating it. (Normally
+        # init-only; allowed here by leaving developer mode for a moment.)
+        with runtime_registry():
+            phone.add_toggle_setting("Show hints", "_test_settings_hints", description="Replaced", section="Test")
+            expect_eq(len(phone.custom_setting_sections()[0][1]), 3, "no duplicates")
+            expect_eq(phone.custom_setting_sections()[0][1][0].description, "Replaced", "replaced")
+            phone.add_toggle_setting("Show hints", "_test_settings_hints", description="Test store toggle", section="Test")
 
     $ phone.show("settings", scroll=1.0)
     $ shot("settings-bottom")

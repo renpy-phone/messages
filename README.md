@@ -45,6 +45,7 @@ A floating phone button (with a badge for unread items) appears in the corner wh
 ## Concepts
 
 - **Everything is in the `phone` namespace** (a Ren'Py named store): `phone.Contact`, `phone.open`, `phone.cfg`...
+- **Registries are init-time only.** `phone.Contact`, `add_wallpaper`, `social_profile`, `add_toggle_setting` and `register_app` belong in `define` or `init` blocks. In developer mode, calling them while the game runs raises an error, because those changes would be lost on load.
 - **Contacts are static.** Create them with `define`. What changes during the story (known, renamed, a different call label) is saved per playthrough by id. Never change a contact's id after release.
 - **Chats are templates.** A `phone.Chat` can be `define`d once and sent many times. Building one touches no saved state; `send()` queues a copy.
 - **Effects are Ren'Py actions.** Anything that runs later (replies, likes, comment options) takes actions such as `SetVariable`, `IncrementVariable`, `Function(module_level_function)` or `Jump`. They must pickle; in developer mode the framework raises right away if one doesn't.
@@ -53,16 +54,17 @@ A floating phone button (with a badge for unread items) appears in the corner wh
 
 | Call | What it does |
 |---|---|
-| `phone.open(app=None, screen=None, **kw)` | Shows the phone and waits until the player closes it. |
-| `phone.show(...)` / `phone.close()` | Show without blocking / close. |
-| `phone.Show(app)`, `phone.Toggle()`, `phone.Close()` | Screen actions, e.g. `key "K_p" action phone.Toggle()`. |
-| `phone.Launch(app, screen=None, **kw)`, `phone.Navigate(screen, **kw)`, `phone.Back()`, `phone.Home()` | Navigation actions for app screens. |
+| `phone.open(app_id=None, screen=None, **kw)` | Shows the phone and waits until the player closes it. |
+| `phone.show(app_id=None, screen=None, **kw)` / `phone.close()` | Show without blocking / close (also ends a waiting `phone.open()`). |
+| `phone.Show(app_id)`, `phone.Toggle()`, `phone.Close()` | Screen actions, e.g. `key "K_p" action phone.Toggle()`. |
+| `phone.Launch(app_id, screen=None, **kw)`, `phone.Navigate(screen, **kw)`, `phone.Back()`, `phone.Home()` | Navigation actions for app screens. |
 | `phone.enable()` / `phone.disable()` | Allow or block opening the phone (for example during a cutscene). |
 | `phone.show_hud()` / `phone.hide_hud()` | Show or hide the floating phone button. |
 | `phone.set_time("21:34")` / `phone.set_battery(20)` | Story clock and battery in the status bar (`set_time(None)` = real time). |
 | `phone.install_app(id)` / `phone.uninstall_app(id)` | Add or remove an app from the home screen for this playthrough. |
 | `phone.notify(title, text, app_id=None)` | Show a banner (only while the phone is closed). |
 | `phone.add_contact(c)`, `phone.rename_contact(c, name)`, `phone.set_avatar(c, img)`, `phone.set_call_label(c, label)` | Per-playthrough contact changes. |
+| `phone.set_player_name(name, handle=None)` | The player's name and social handle for this playthrough (`"[povname]"` works). Defaults to `cfg.player_name`. |
 
 `phone.Contact(id, name=None, avatar=None, character=None, number=None, handle=None, color=None, call_label=None, known=False)`: the name defaults to the Character's name and supports interpolation (`"[sister_name]"`). Without an avatar, a colored circle with the initial is drawn.
 
@@ -212,6 +214,8 @@ screen phone_bank():
   - Color with `phone.color(key)`.
 - **App hooks:** implement `badge()` for the icon count and `on_launch(**kw)` for work to do on open.
 - **State changes:** changes from screens should go through a `phone.PhoneAction` subclass (implement `run()`), so they survive saving mid-interaction.
+- **Replacing a built-in app:** register a subclass of it with the same id, e.g. `register_app(MyMessagesApp())`.
+- **Name shadowing:** inside `init python in phone:`, the names `open`, `show`, `Show`, `text`, `close` and `notify` are the phone's functions. Use `store.Show` or `builtins.open` there if you need Ren'Py's or Python's.
 
 ## Project layout
 

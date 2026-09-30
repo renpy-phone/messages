@@ -93,3 +93,73 @@ label test_core_theme_rebuild:
     $ phone.set_theme("light")
     $ expect_eq(style.phone_default.color, Color(phone.cfg.themes["light"]["text"]), "theme switches back")
     return
+
+label test_core_close_ends_open:
+    # phone.close() from a screen must end phone.open(), not leave it stuck.
+    show screen _test_function_closer
+    $ phone.open()
+    $ expect(not phone.is_open(), "Function(phone.close) returns from phone.open")
+    return
+
+screen _test_function_closer():
+    timer 0.5 action [Hide("_test_function_closer"), Function(phone.close)]
+
+label test_core_after_load_registered:
+    $ expect(phone._core_after_load in config.after_load_callbacks, "core migration hook is registered")
+    python:
+        s = phone.state
+        del s.__dict__["battery"]
+        phone._core_after_load()
+        expect_eq(s.battery, 100, "missing fields are restored on load")
+    return
+
+label test_core_player_name:
+    default _test_pov = "Alex"
+    $ expect_eq(phone.player_name(), phone.cfg.player_name, "defaults to cfg")
+    $ phone.set_player_name("[_test_pov]", handle="alex_99")
+    $ expect_eq(phone.player_name(), "Alex", "runtime name is interpolated")
+    $ expect_eq(phone.player_handle(), "alex_99", "runtime handle")
+    return
+
+label test_core_subclass_app:
+    python:
+        class _TestAppV2(_TestApp):
+            name = "Test v2"
+        with runtime_registry():
+            phone.register_app(_TestAppV2())
+        expect_eq(phone.get_app("test_app").name, "Test v2", "a subclass can replace an app")
+        try:
+            class _Other(phone.App):
+                id = "test_app"
+                screen = "phone_test_app"
+            with runtime_registry():
+                phone.register_app(_Other())
+            expect(False, "an unrelated app cannot take an id")
+        except Exception:
+            pass
+        phone.apps["test_app"] = _TestApp()
+    return
+
+label test_core_clock_ticks:
+    $ phone.set_time("09:41")
+    $ phone.show()
+    $ shot("core-story-clock")
+    $ phone.set_time("09:42")
+    $ wait(1.2)
+    $ phone.close()
+    $ phone.set_time(None)
+    return
+
+label test_core_memo_cache:
+    python:
+        a = phone.rounded("accent", "md")
+        b = phone.rounded("accent", "md")
+        expect(a is b, "rounded() is cached")
+        c = phone.avatar("test_contact", 40)
+        phone.rename_contact("test_contact", "Zed")
+        d = phone.avatar("test_contact", 40)
+        expect(c is not d, "avatar cache follows contact changes")
+        phone.set_theme("dark")
+        expect(phone.rounded("accent", "md") is not a, "cache is per theme")
+        phone.set_theme("light")
+    return

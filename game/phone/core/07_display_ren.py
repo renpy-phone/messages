@@ -13,6 +13,34 @@ GLYPH_FONT = "DejaVuSans.ttf"  # ships with Ren'Py, has the symbols we use
 # color emoji by Ren'Py 8.2+, so App.glyph should come from this set:
 #   ❝ ◉ ✆ ☏ ✱ ◐ ✎ ♡ ❖ ⌂ ▣ ▦ ◈ ✦ ☰ ≡ ♫ ⚑ ⊙ ✚ ‹ › ○ ● ✕
 
+# Screens are re-evaluated on every interaction, so rebuilding avatars, icons
+# and cropped images each time adds up with long chat logs and feeds. Builders
+# below cache their result on everything it depends on. Not saved.
+_memo = {}
+
+
+def memoized(fn):
+    """Caches fn(*args) per theme, text size and resolution."""
+
+    def wrapper(*args):
+        key = (fn.__name__, args, theme_name(), text_scale(), store.config.screen_height)
+        try:
+            rv = _memo.get(key)
+        except TypeError:  # unhashable argument
+            return fn(*args)
+        if rv is None:
+            if len(_memo) > 4000:
+                _memo.clear()
+            rv = _memo[key] = fn(*args)
+        return rv
+
+    wrapper.__name__ = fn.__name__
+    wrapper.__qualname__ = fn.__qualname__
+    wrapper.__module__ = fn.__module__
+    wrapper.__doc__ = fn.__doc__
+    return wrapper
+
+
 # Folder holding the framework images, relative to the game directory.
 asset_dir = "phone/images/"
 
@@ -21,6 +49,7 @@ def asset(name):
     return asset_dir + name
 
 
+@memoized
 def rounded(key_or_color, radius="md"):
     """A rounded rectangle Frame in a theme color. radius: "sm", "md" or "lg"."""
     image, border = {
@@ -32,10 +61,12 @@ def rounded(key_or_color, radius="md"):
     return Frame(Transform(tinted(asset(image), key_or_color), zoom=scale), px(border), px(border))
 
 
+@memoized
 def circle(key_or_color, size):
     return Transform(tinted(asset("circle.png"), key_or_color), xysize=(size, size))
 
 
+@memoized
 def cover(image, width, height):
     """Scales `image` to fill width x height, cropping the overflow evenly."""
     width, height = int(width), int(height)
@@ -50,13 +81,17 @@ def avatar(who, size):
     if who is None:
         image = cfg.player_avatar
         tint = color("accent")
-        initial = (cfg.player_name or "?")[:1].upper()
+        initial = (player_name() or "?")[:1].upper()
     else:
         c = contact(who)
         image = c.avatar
         tint = c.tint()
         initial = c.initial()
+    return _avatar(image, tint, initial, size)
 
+
+@memoized
+def _avatar(image, tint, initial, size):
     if image is None:
         return Fixed(
             circle(tint, size),
@@ -70,6 +105,7 @@ def avatar(who, size):
     )
 
 
+@memoized
 def app_icon(app, size):
     size = int(size)
     if app.icon is not None:
@@ -147,3 +183,18 @@ def content_size():
 def page_body_height():
     """Height below a phone_page header."""
     return content_size()[1] - px(HEADER_HEIGHT)
+
+
+def _clock_frame(st, at, style, color):
+    kwargs = {"color": color} if color else {}
+    rv = Text(clock_text(), style=style, substitute=False, **kwargs)
+    # Tick once a second for the real-time clock; a story clock is static.
+    return rv, (1.0 if state.clock is None else None)
+
+
+def clock(style="phone_status_text", color=None):
+    """The status bar clock as a displayable that updates itself.
+
+    (A screen timer would re-run the whole phone screen every second.)
+    """
+    return store.DynamicDisplayable(_clock_frame, style, color)

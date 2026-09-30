@@ -50,9 +50,12 @@ class App(python_object):
 
 def register_app(app):
     """Adds an App instance to the phone. Call from an init python block."""
+    init_only("phone.register_app()")
     if not app.id:
         raise Exception("phone.register_app: {!r} has no id.".format(app))
-    if app.id in apps and type(apps[app.id]) is not type(app):
+    old = apps.get(app.id)
+    if old is not None and not isinstance(app, type(old)):
+        # Replacing a built-in app is allowed with a subclass of it.
         raise Exception("phone.register_app: app id {!r} is already used by {!r}.".format(app.id, apps[app.id]))
     apps[app.id] = app
     return app

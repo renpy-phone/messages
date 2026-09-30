@@ -54,6 +54,13 @@ def open(app_id=None, screen=None, **kwargs):
 
 
 def close():
+    """Closes the phone. From a screen, prefer the phone.Close() action.
+
+    If the phone was opened with phone.open(), this also ends the wait; the
+    return value then has to reach Ren'Py, e.g. via Function(phone.close).
+    """
+    if _called:
+        return Close()()
     renpy.hide_screen("phone", layer=cfg.layer)
     mutated()
 
@@ -212,3 +219,25 @@ def set_text_scale(scale):
     """Scales phone text, e.g. 0.85, 1.0 or 1.2."""
     store.persistent._phone_text_scale = scale
     store.gui.rebuild()
+
+
+# The player -----------------------------------------------------------------
+
+def player_name():
+    """The player's display name: set_player_name() or cfg.player_name."""
+    name = getattr(state, "player_name", None) if globals().get("state") is not None else None
+    return renpy.substitute(name if name is not None else cfg.player_name)
+
+
+def player_handle():
+    handle = getattr(state, "player_handle", None) if globals().get("state") is not None else None
+    return renpy.substitute(handle if handle is not None else cfg.player_handle)
+
+
+def set_player_name(name, handle=None):
+    """Sets the player's name (and optionally social handle) for this
+    playthrough, e.g. after the player types it in. "[var]" works too.
+    """
+    state.player_name = name
+    if handle is not None:
+        state.player_handle = handle

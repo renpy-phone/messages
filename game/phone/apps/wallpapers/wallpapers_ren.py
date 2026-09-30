@@ -55,6 +55,7 @@ def add_wallpaper(id, image, name=None, locked=False):
     Adding an id that already exists replaces that wallpaper, which lets a
     game restyle a built-in one.
     """
+    init_only("phone.add_wallpaper()")
     item = (id, image, name, locked)
     for i, w in enumerate(cfg.wallpapers):
         if w[0] == id:
@@ -66,6 +67,7 @@ def add_wallpaper(id, image, name=None, locked=False):
 
 def remove_wallpaper(id):
     """Removes a wallpaper from the registry. Call from an init block."""
+    init_only("phone.remove_wallpaper()")
     cfg.wallpapers[:] = [w for w in cfg.wallpapers if w[0] != id]
     if cfg.default_wallpaper == id:
         cfg.default_wallpaper = None
@@ -73,6 +75,7 @@ def remove_wallpaper(id):
 
 def clear_wallpapers():
     """Removes every wallpaper, including the built-in ones (init time)."""
+    init_only("phone.clear_wallpapers()")
     cfg.wallpapers[:] = []
     cfg.default_wallpaper = None
 
