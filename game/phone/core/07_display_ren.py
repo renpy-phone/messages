@@ -37,8 +37,11 @@ def circle(key_or_color, size):
 
 
 def cover(image, width, height):
-    """Scales and crops `image` to fill width x height."""
-    return Transform(image, fit="cover", xysize=(width, height), crop_relative=True)
+    """Scales `image` to fill width x height, cropping the overflow evenly."""
+    width, height = int(width), int(height)
+    scaled = Transform(image, fit="cover", xysize=(width, height))
+    centered = Fixed(Transform(scaled, align=(0.5, 0.5)), xysize=(width, height))
+    return Transform(centered, crop=(0, 0, width, height))
 
 
 def avatar(who, size):
