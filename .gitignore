@@ -13,3 +13,6 @@ lint.txt
 game/saves/
 game/cache/
 *.bak
+
+# Local copy of the Ren'Py SDK sources for editor type hints
+typings/

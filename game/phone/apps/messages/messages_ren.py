@@ -24,7 +24,7 @@ init -920 python in phone:
 # front of the queue. Effects added with .set() / .add() / .effect() run when
 # playback reaches them, not when the chat is sent.
 
-import store
+import store  # pyright: ignore[reportMissingImports]
 
 cfg.messages_typing_delay = 0.8  # seconds per message while a chat is on screen; 0 = instant
 cfg.messages_max_rendered = 100  # a conversation screen shows at most this many entries

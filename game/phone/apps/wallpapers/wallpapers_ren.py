@@ -18,10 +18,19 @@ init -920 python in phone:
 # The current wallpaper is saved in phone.state.wallpaper (None means
 # cfg.default_wallpaper).
 
-from store import Fixed as _Fixed, Solid as _Solid, Transform as _Transform
+import random as _random
+
+from store import (
+    Color as _Color,
+    Fixed as _Fixed,
+    Solid as _Solid,
+    Transform as _Transform,
+    TintMatrix as _TintMatrix,
+)  # pyright: ignore[reportMissingImports]
 
 
 # Registry --------------------------------------------------------------------
+
 
 def _entry(item):
     """Normalizes a cfg.wallpapers item to (id, image, name, locked).
@@ -98,6 +107,7 @@ def wallpaper_name(id):
 
 # Saved state -----------------------------------------------------------------
 
+
 class WallpapersState(object):
     def __init__(self):
         self.version = 1
@@ -120,10 +130,15 @@ if _wallpapers_after_load not in store.config.after_load_callbacks:
 
 # Public API ------------------------------------------------------------------
 
+
 def _require(id):
     e = wallpaper_entry(id)
     if e is None:
-        raise Exception("phone: unknown wallpaper {!r} (add it with phone.add_wallpaper).".format(id))
+        raise Exception(
+            "phone: unknown wallpaper {!r} (add it with phone.add_wallpaper).".format(
+                id
+            )
+        )
     return e
 
 
@@ -234,6 +249,7 @@ def wallpaper_preview_image(id):
 
 # Screen actions --------------------------------------------------------------
 
+
 class PreviewWallpaper(PhoneAction):
     """Opens the full-display preview of a wallpaper."""
 
@@ -286,11 +302,26 @@ cfg.default_wallpaper = "aurora"
 
 
 def _wallpapers_lint():
-    if cfg.default_wallpaper is not None and wallpaper_entry(cfg.default_wallpaper) is None:
-        print("phone: cfg.default_wallpaper {!r} is not in cfg.wallpapers.".format(cfg.default_wallpaper))
+    if (
+        cfg.default_wallpaper is not None
+        and wallpaper_entry(cfg.default_wallpaper) is None
+    ):
+        print(
+            "phone: cfg.default_wallpaper {!r} is not in cfg.wallpapers.".format(
+                cfg.default_wallpaper
+            )
+        )
     for w in cfg.wallpapers:
-        if isinstance(w[1], str) and not renpy.has_image(w[1]) and not renpy.loadable(w[1]):
-            print("phone: wallpaper {!r} uses image {!r}, which does not exist.".format(w[0], w[1]))
+        if (
+            isinstance(w[1], str)
+            and not renpy.has_image(w[1])
+            and not renpy.loadable(w[1])
+        ):
+            print(
+                "phone: wallpaper {!r} uses image {!r}, which does not exist.".format(
+                    w[0], w[1]
+                )
+            )
 
 
 if _wallpapers_lint not in store.config.lint_hooks:
@@ -319,9 +350,13 @@ class WallpapersApp(App):
 register_app(WallpapersApp())
 
 require_art(
-    "wallpapers/tile", "wallpapers/mask", "wallpapers/lock",
-    "wallpapers/set_button", "wallpapers/cancel_button",
-    "common/check", "common/badge",
+    "wallpapers/tile",
+    "wallpapers/mask",
+    "wallpapers/lock",
+    "wallpapers/set_button",
+    "wallpapers/cancel_button",
+    "common/check",
+    "common/badge",
 )
 
 

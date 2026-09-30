@@ -20,7 +20,7 @@ init -920 python in phone:
 #
 # Rename the app from an init block: `init python: phone.social.name = "Snapgram"`.
 
-import store
+import store  # pyright: ignore[reportMissingImports]
 
 
 # Art under gui/phone/ (placeholders from tools/art/social_art.rpy); lint

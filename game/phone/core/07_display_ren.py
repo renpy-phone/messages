@@ -4,7 +4,7 @@ init -930 python in phone:
 
 # Displayable helpers used by the phone screens (and handy for custom apps).
 
-from store import AlphaMask, Fixed, Frame, Solid, Text, Transform
+from store import AlphaMask, Fixed, Frame, Solid, Text, Transform  # pyright: ignore[reportMissingImports]
 
 # Screens are re-evaluated on every interaction, so rebuilding avatars, icons
 # and cropped images each time adds up with long chat logs and feeds. Builders

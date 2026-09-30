@@ -5,7 +5,7 @@ init -950 python in phone:
 # Screen actions. Every change to phone state made from a screen goes
 # through an action so it survives save/load mid-interaction.
 
-from store import Action, DictEquality
+from store import Action, DictEquality  # pyright: ignore[reportMissingImports]
 
 _called = False  # True while phone.open() is waiting in call_screen
 
