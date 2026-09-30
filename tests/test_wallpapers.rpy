@@ -22,6 +22,21 @@ label test_wallpapers_registry:
     $ expect(phone.wallpaper_unlocked("dusk"), "built-ins are unlocked")
     $ expect(not phone.wallpaper_unlocked("nope"), "unknown ids are not unlocked")
 
+    python:
+        # The built-ins are picture files, and the app's art is all there.
+        for wid in ("aurora", "dusk", "night", "lagoon", "coral", "graphite"):
+            image = phone.wallpaper_entry(wid)[1]
+            expect(isinstance(image, str) and image.startswith("gui/phone/wallpapers/") and renpy.loadable(image),
+                   "built-in wallpaper {} is a picture file".format(wid))
+        for theme in ("light", "dark"):
+            phone.set_theme(theme)
+            for state in ("idle", "hover", "selected_idle", "selected_hover"):
+                expect((phone.art_path("wallpapers/tile", state) or "").endswith("wallpapers/tile_{}.png".format(state)),
+                       "tile outline {} ({})".format(state, theme))
+            expect((phone.art_path("wallpapers/set_button", "insensitive") or "").endswith("set_button_insensitive.png"), "Current button art")
+        phone.set_theme("light")
+        expect(phone.has_art("wallpapers/lock") and phone.has_art("wallpapers/mask"), "lock and mask art")
+
     $ phone.set_wallpaper("dusk")
     $ expect_eq(phone.state.wallpaper, "dusk", "set_wallpaper saves the id in phone.state")
     $ expect_eq(phone.current_wallpaper(), "dusk", "current_wallpaper")

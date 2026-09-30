@@ -38,6 +38,7 @@ screen phone_wallpapers_tile(entry, tw, th):
     button:
         style "phone_wallpapers_tile"
         action phone.PreviewWallpaper(wid)
+        selected current
         alt name
 
         vbox:
@@ -46,10 +47,10 @@ screen phone_wallpapers_tile(entry, tw, th):
             fixed:
                 xysize (tw + 2 * ring, th + 2 * ring)
 
-                if current:
-                    add Transform(phone.rounded("accent", "md"), xysize=(tw + 2 * ring, th + 2 * ring))
-                else:
-                    add Transform(phone.rounded("divider", "md"), xysize=(tw + 2 * ring, th + 2 * ring)) alpha 0.6
+                # Outline: wallpapers/tile, selected for the current one.
+                frame:
+                    style "phone_wallpapers_tile_outline"
+                    xysize (tw + 2 * ring, th + 2 * ring)
 
                 fixed:
                     pos (ring, ring)
@@ -59,16 +60,12 @@ screen phone_wallpapers_tile(entry, tw, th):
                     if unlocked:
                         text phone.clock_text() style "phone_wallpapers_tile_clock" substitute False
                     else:
-                        add phone.lock_icon(phone.px(40)) align (0.5, 0.5)
+                        add phone.art("wallpapers/lock", size=(phone.px(40), phone.px(40))) align (0.5, 0.5)
 
                     if current:
-                        fixed:
-                            xysize (phone.px(30), phone.px(30))
-                            xalign 1.0
-                            yalign 1.0
+                        add phone.art("common/check", size=(phone.px(30), phone.px(30))):
+                            align (1.0, 1.0)
                             offset (-phone.px(10), -phone.px(10))
-                            add phone.circle("accent", phone.px(30))
-                            text "✓" style "phone_wallpapers_check"
 
                     if unlocked and phone.wallpaper_is_new(wid):
                         frame:
@@ -105,7 +102,7 @@ screen phone_wallpapers_preview(wallpaper):
                 vbox:
                     align (0.5, 0.4)
                     spacing phone.px(16)
-                    add phone.lock_icon(phone.px(64)) xalign 0.5
+                    add phone.art("wallpapers/lock", size=(phone.px(64), phone.px(64))) xalign 0.5
                     text _("Locked") style "phone_wallpapers_preview_note" xalign 0.5
                     text _("Keep playing to unlock this wallpaper.") style "phone_wallpapers_preview_hint"
 

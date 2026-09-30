@@ -36,7 +36,7 @@ screen phone_settings(scroll=0.0):
                         _("Wallpaper"),
                         (phone.wallpaper_name(wid) if wid else _("Theme color")),
                         phone.Launch("wallpapers"),
-                        image=phone.wallpaper_thumbnail(wid, phone.px(28), phone.px(56), "sm"),
+                        image=phone.wallpaper_thumbnail(wid, phone.px(28), phone.px(56), ("settings/thumbnail_mask", 8)),
                         )
 
                 use phone_settings_section(_("Notifications"))
@@ -66,7 +66,7 @@ screen phone_settings(scroll=0.0):
                         if isinstance(setting, phone.ToggleSetting):
                             use phone_toggle(setting.label, setting.value(), setting.action(), description=setting.description)
                         else:
-                            use phone_row(setting.label, subtitle=setting.description, note="›", action=setting.action())
+                            use phone_settings_action(setting.label, setting.description, setting.action())
 
                 use phone_settings_section(_("About"))
                 use phone_settings_info(_("Name"), phone.cfg.device_name)
@@ -101,7 +101,24 @@ screen phone_settings_link(label, value, action, image=None):
                 text value style "phone_settings_info_value" substitute False
                 if image is not None:
                     add image yalign 0.5
-                text "›" style "phone_settings_chevron"
+                add phone.art("common/chevron", size=phone.settings_chevron_size()) yalign 0.5
+    use phone_divider
+
+
+## A row added with phone.add_action_setting(): label, optional description
+## and a chevron on the right.
+screen phone_settings_action(label, description, action):
+    button:
+        style "phone_row"
+        properties phone.art_layer_states("common/chevron", phone.settings_chevron_size(), "foreground", xalign=1.0, yalign=0.5, xoffset=-phone.px(12))
+        action action
+
+        vbox:
+            yalign 0.5
+            xsize phone.px(330)
+            text label style "phone_row_title" substitute False
+            if description:
+                text description style "phone_row_subtext" substitute False
     use phone_divider
 
 

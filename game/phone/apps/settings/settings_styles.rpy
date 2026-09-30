@@ -25,16 +25,19 @@ style phone_settings_info_value is phone_subtext:
     text_align 1.0
     layout "nobreak"
 
+# Segmented control: settings/segmented is the track, settings/segment each
+# choice (idle, hover, selected_idle, selected_hover). Borders 18.
 style phone_segmented is empty:
-    background phone.rounded("surface_alt", "md")
+    background phone.art_frame("settings/segmented", 18)
     padding (phone.px(3), phone.px(3))
     xfill True
 
 style phone_segmented_button is empty:
     padding (phone.px(6), phone.px(8))
-    selected_background phone.rounded("accent", "md")
-    hover_background phone.rounded("divider", "md")
-    selected_hover_background phone.rounded("accent", "md")
+    background phone.art_frame("settings/segment", 18)
+    hover_background phone.art_frame("settings/segment", 18, "hover")
+    selected_idle_background phone.art_frame("settings/segment", 18, "selected_idle")
+    selected_hover_background phone.art_frame("settings/segment", 18, "selected_hover")
 
 style phone_segmented_button_text is phone_default:
     size phone.text_px(18)
@@ -44,8 +47,3 @@ style phone_segmented_button_text is phone_default:
     color phone.color("text")
     selected_color phone.color("accent_text")
     bold True
-
-style phone_settings_chevron is phone_glyph:
-    size phone.text_px(30)
-    color phone.color("subtext")
-    yalign 0.5

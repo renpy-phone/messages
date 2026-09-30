@@ -18,9 +18,7 @@ init -920 python in phone:
 # The current wallpaper is saved in phone.state.wallpaper (None means
 # cfg.default_wallpaper).
 
-import random as _random
-
-from store import Color as _Color, Fixed as _Fixed, Solid as _Solid, Transform as _Transform, TintMatrix as _TintMatrix
+from store import Fixed as _Fixed, Solid as _Solid, Transform as _Transform
 
 
 # Registry --------------------------------------------------------------------
@@ -194,10 +192,11 @@ def current_wallpaper():
     return None
 
 
-def wallpaper_thumbnail(id, width, height, radius="md", dim=False):
+def wallpaper_thumbnail(id, width, height, mask=("wallpapers/mask", 18), dim=False):
     """A rounded preview of a wallpaper, e.g. for a settings row.
 
-    `id` None (or an unknown id) shows the theme's wallpaper color.
+    `id` None (or an unknown id) shows the theme's wallpaper color. `mask`
+    is (art name, 9-slice border) of the white shape that rounds it.
     """
     e = wallpaper_entry(id) if id is not None else None
     size = (int(width), int(height))
@@ -210,7 +209,7 @@ def wallpaper_thumbnail(id, width, height, radius="md", dim=False):
     return _Fixed(
         store.AlphaMask(
             _Transform(image, xysize=size),
-            _Transform(rounded("#ffffff", radius), xysize=size),
+            _Transform(art_frame(*mask), xysize=size),
         ),
         xysize=size,
     )
@@ -221,38 +220,6 @@ def wallpaper_tile_size():
     dw, dh = display_size()
     tw = px(168)
     return tw, int(round(tw * dh / float(dw)))
-
-
-# Turns a white-on-black drawing into white on transparent, so shapes can be
-# cut out of each other (used for the padlock's shackle).
-_BLACK_TO_CLEAR = store.Matrix([1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 0])
-
-
-def lock_icon(size):
-    """A white padlock drawn from plain shapes (no emoji font needed)."""
-    size = int(size)
-    t = max(2, int(round(size * 0.12)))  # stroke
-    sw = int(round(size * 0.56))  # shackle width
-    sx = (size - sw) // 2
-    bw = int(round(size * 0.8))  # body
-    bh = int(round(size * 0.5))
-    by = size - bh
-    arch = _Transform(
-        _Fixed(
-            _Transform(asset("circle.png"), xysize=(sw, sw)),
-            _Transform(asset("circle.png"), xysize=(sw - 2 * t, sw - 2 * t), matrixcolor=_TintMatrix("#000000"), align=(0.5, 0.5)),
-            xysize=(sw, sw),
-        ),
-        mesh=True, matrixcolor=_BLACK_TO_CLEAR, crop=(0, 0, sw, sw // 2),
-    )
-    legs = by - sw // 2 + t
-    return _Fixed(
-        _Transform(arch, xpos=sx, ypos=0),
-        _Solid("#ffffff", xysize=(t, legs), xpos=sx, ypos=sw // 2),
-        _Solid("#ffffff", xysize=(t, legs), xpos=sx + sw - t, ypos=sw // 2),
-        _Transform(rounded("#ffffff", "sm"), xysize=(bw, bh), xpos=(size - bw) // 2, ypos=by),
-        xysize=(size, size),
-    )
 
 
 def wallpaper_preview_image(id):
@@ -300,108 +267,20 @@ class SetWallpaper(PhoneAction):
 
 # Built-in wallpapers ---------------------------------------------------------
 #
-# Drawn from Solids and the white shapes in phone/images, so they need no
-# image files. They are authored on a 540x1140 canvas (the display's shape)
-# and scaled to fit.
+# Pictures in gui/phone/wallpapers/ (drawn by tools/art/wallpapers_art.rpy).
+# A game can restyle one by adding a wallpaper with the same id, or remove
+# them with phone.clear_wallpapers().
 
-WALLPAPER_SIZE = (540, 1140)
-
-
-def gradient(colors, width=WALLPAPER_SIZE[0], height=WALLPAPER_SIZE[1], steps=72):
-    """A vertical gradient through `colors` (top to bottom), made of bands."""
-    colors = [_Color(c) for c in colors]
-    if len(colors) == 1:
-        return _Solid(colors[0], xysize=(width, height))
-    band = height / float(steps)
-    children = []
-    for i in range(steps):
-        t = (i + 0.5) / steps * (len(colors) - 1)
-        k = min(int(t), len(colors) - 2)
-        c = colors[k].interpolate(colors[k + 1], t - k)
-        y0 = int(round(i * band))
-        y1 = int(round((i + 1) * band))
-        children.append(_Solid(c, xysize=(width, y1 - y0 + 1), ypos=y0))
-    return _Fixed(*children, xysize=(width, height))
-
-
-def _shape(image, tint, size, x, y, alpha=1.0):
-    """A tinted white shape centered on (x, y) of the canvas."""
-    return _Transform(
-        asset(image), xysize=(size, size), matrixcolor=_TintMatrix(tint),
-        alpha=alpha, xpos=x, ypos=y, xanchor=0.5, yanchor=0.5,
-    )
-
-
-def _canvas(*children):
-    w, h = WALLPAPER_SIZE
-    return _Transform(_Fixed(*children, xysize=(w, h)), crop=(0, 0, w, h))
-
-
-def _builtin_wallpapers():
-    w, h = WALLPAPER_SIZE
-
-    aurora = _canvas(
-        gradient(["#0f2027", "#203a43", "#2c5364"]),
-        _shape("circle.png", "#43cea2", 560, 60, 330, 0.28),
-        _shape("circle.png", "#185a9d", 680, 470, 720, 0.35),
-        _shape("circle.png", "#7f7fd5", 360, 420, 180, 0.18),
-    )
-
-    dusk = _canvas(
-        gradient(["#1a1a40", "#6a2c70", "#e3646b", "#f9b17a"]),
-        _shape("circle.png", "#ffe29a", 250, 270, 790, 0.95),
-        _shape("circle.png", "#3b1f4a", 1100, 30, 1400),
-        _shape("circle.png", "#2a1537", 1000, 560, 1440),
-    )
-
-    stars = []
-    rng = _random.Random(7)
-    for _i in range(34):
-        size = rng.choice((4, 5, 6, 8))
-        stars.append(_shape("circle.png", "#ffffff", size, rng.randint(10, w - 10), rng.randint(10, int(h * 0.7)), rng.uniform(0.35, 0.9)))
-    night = _canvas(
-        gradient(["#070b1d", "#16224a", "#34467f"]),
-        *(stars + [
-            _shape("circle.png", "#f6f1d5", 150, 385, 330),
-            _shape("circle.png", "#101838", 132, 420, 310),
-            _shape("circle.png", "#0d1530", 900, 100, 1500),
-            _shape("circle.png", "#111b3b", 900, 520, 1560),
-        ])
-    )
-
-    lagoon = _canvas(
-        gradient(["#0b6e70", "#139a86", "#2bb884"]),
-        _shape("ring.png", "#ffffff", 420, 470, 250, 0.22),
-        _shape("ring.png", "#ffffff", 260, 470, 250, 0.16),
-        _shape("ring.png", "#ffffff", 600, 60, 900, 0.18),
-        _shape("circle.png", "#ffffff", 180, 90, 520, 0.08),
-    )
-
-    coral = _canvas(
-        gradient(["#c0265f", "#e8566a", "#f98f6f"]),
-        _shape("circle.png", "#ffffff", 520, 470, 180, 0.12),
-        _shape("circle.png", "#ffffff", 400, 40, 620, 0.10),
-        _shape("circle.png", "#ffd3a5", 420, 520, 1040, 0.25),
-    )
-
-    graphite = _canvas(
-        gradient(["#1c1d20", "#2c2e33", "#3d4046"]),
-        *[_shape("ring.png", "#ffffff", s, 540, 1140, 0.07) for s in (300, 520, 740, 960, 1180, 1400)]
-    )
-
-    return [
-        ("aurora", aurora, _("Aurora")),
-        ("dusk", dusk, _("Dusk")),
-        ("night", night, _("Night Sky")),
-        ("lagoon", lagoon, _("Lagoon")),
-        ("coral", coral, _("Coral")),
-        ("graphite", graphite, _("Graphite")),
-    ]
-
-
-for _w in _builtin_wallpapers():
-    add_wallpaper(*_w)
-del _w
+for _wid, _wname in (
+    ("aurora", _("Aurora")),
+    ("dusk", _("Dusk")),
+    ("night", _("Night Sky")),
+    ("lagoon", _("Lagoon")),
+    ("coral", _("Coral")),
+    ("graphite", _("Graphite")),
+):
+    add_wallpaper(_wid, "gui/phone/wallpapers/{}.png".format(_wid), _wname)
+del _wid, _wname
 
 cfg.default_wallpaper = "aurora"
 
@@ -427,8 +306,6 @@ class WallpapersApp(App):
     id = "wallpapers"
     name = _("Wallpapers")
     screen = "phone_wallpapers"
-    glyph = "◐"
-    color = "#ff9500"
     order = 80
 
     def badge(self):
@@ -440,6 +317,12 @@ class WallpapersApp(App):
 
 
 register_app(WallpapersApp())
+
+require_art(
+    "wallpapers/tile", "wallpapers/mask", "wallpapers/lock",
+    "wallpapers/set_button", "wallpapers/cancel_button",
+    "common/check", "common/badge",
+)
 
 
 """renpy

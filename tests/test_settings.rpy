@@ -47,6 +47,15 @@ label test_settings_theme:
 
 label test_settings_text_size:
     $ _settings_test_defaults()
+    python:
+        # Every state of a segment has its own art, in both themes.
+        for theme in ("light", "dark"):
+            phone.set_theme(theme)
+            for state in ("idle", "hover", "selected_idle", "selected_hover"):
+                path = phone.art_path("settings/segment", state) or ""
+                expect(path.endswith("settings/segment_{}.png".format(state)) and (("themes/dark/" in path) == (theme == "dark")),
+                       "segment {} ({})".format(state, theme))
+        phone.set_theme("light")
     $ phone.show("settings")
     $ expect(phone.SetTextScale(1.0).get_selected(), "Default is selected")
     $ _settings_test_click(phone.SetTextScale(1.2))

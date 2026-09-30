@@ -28,6 +28,14 @@ text_sizes = [
 ]
 
 
+def settings_chevron_size():
+    """Size of the common/chevron art on tappable settings rows (it grows
+    with the text size, like the row labels).
+    """
+    s = text_px(30)
+    return (s, s)
+
+
 def notifications_enabled():
     return store.persistent._phone_notifications is not False
 
@@ -243,9 +251,9 @@ class SettingsApp(App):
     id = "settings"
     name = _("Settings")
     screen = "phone_settings"
-    glyph = "✱"
-    color = "#8e8e93"
     order = 90
 
 
 register_app(SettingsApp())
+
+require_art("settings/segmented", "settings/segment", "settings/thumbnail_mask", "common/chevron")

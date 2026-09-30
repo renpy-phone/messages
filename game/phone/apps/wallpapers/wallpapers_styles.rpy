@@ -14,6 +14,16 @@ style phone_wallpapers_grid_row is empty:
 style phone_wallpapers_tile is empty:
     padding (0, 0)
 
+# The outline around a thumbnail follows the tile button's state (hover,
+# selected = current wallpaper). Border 22: the thumbnail's 18px corner
+# radius plus the 4px outline.
+style phone_wallpapers_tile_outline is empty:
+    padding (0, 0)
+    background phone.art_frame("wallpapers/tile", 22)
+    hover_background phone.art_frame("wallpapers/tile", 22, "hover")
+    selected_idle_background phone.art_frame("wallpapers/tile", 22, "selected_idle")
+    selected_hover_background phone.art_frame("wallpapers/tile", 22, "selected_hover")
+
 style phone_wallpapers_tile_name is phone_default:
     size phone.text_px(18)
     xalign 0.5
@@ -30,15 +40,8 @@ style phone_wallpapers_tile_clock is phone_default:
     xalign 0.5
     ypos phone.px(26)
 
-style phone_wallpapers_check is phone_glyph:
-    size phone.px(18)
-    bold True
-    color phone.color("accent_text")
-    xalign 0.5
-    yalign 0.5
-
 style phone_wallpapers_new is empty:
-    background phone.rounded("badge", "sm")
+    background phone.art_frame("common/badge", 12)
     padding (phone.px(9), phone.px(4))
     xalign 0.0
     yalign 1.0
@@ -76,7 +79,9 @@ style phone_wallpapers_preview_hint is phone_default:
 
 style phone_wallpapers_preview_set is phone_button:
     xminimum phone.px(200)
-    insensitive_background Transform(phone.rounded("#ffffff", "md"), alpha=0.25)
+    background phone.art_frame("wallpapers/set_button", 18)
+    hover_background phone.art_frame("wallpapers/set_button", 18, "hover")
+    insensitive_background phone.art_frame("wallpapers/set_button", 18, "insensitive")
 
 style phone_wallpapers_preview_set_text is phone_button_text:
     bold True
@@ -84,8 +89,8 @@ style phone_wallpapers_preview_set_text is phone_button_text:
 
 style phone_wallpapers_preview_cancel is phone_button:
     xminimum phone.px(140)
-    background Transform(phone.rounded("#ffffff", "md"), alpha=0.22)
-    hover_background Transform(phone.rounded("#ffffff", "md"), alpha=0.38)
+    background phone.art_frame("wallpapers/cancel_button", 18)
+    hover_background phone.art_frame("wallpapers/cancel_button", 18, "hover")
 
 style phone_wallpapers_preview_cancel_text is phone_button_text:
     color "#ffffff"
