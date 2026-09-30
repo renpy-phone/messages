@@ -301,12 +301,28 @@ label test_social_load_more:
 
 label test_social_memo_and_saves:
     $ s = phone.social
-    $ a = phone.social_icon("heart", "social_like", 30)
-    $ expect(a is phone.social_icon("heart", "social_like", 30), "icons are memoized")
-    $ expect(a is not phone.social_icon("heart", "social_like", 31), "the memo is keyed on the size")
+    $ a = phone.social_icon_states("social/like", 30)
+    $ expect(a is phone.social_icon_states("social/like", 30), "icons are memoized")
+    $ expect(a is not phone.social_icon_states("social/like", 31), "the memo is keyed on the size")
     $ phone.set_theme("dark")
-    $ expect(a is not phone.social_icon("heart", "social_like", 30), "the memo is keyed on the theme")
+    $ expect(a is not phone.social_icon_states("social/like", 30), "the memo is keyed on the theme")
     $ phone.set_theme("light")
+
+    # The heart is an outline until liked, then filled; every state has art,
+    # with dark versions of the themed ones.
+    python:
+        for name, states in (("social/like", ("idle", "hover", "selected_idle", "selected_hover")),
+                             ("social/comment", ("idle", "hover")),
+                             ("social/profile_ring", ("idle", "hover")),
+                             ("social/follow_button", ("idle", "hover", "selected_idle", "selected_hover")),
+                             ("social/option_button", ("idle", "hover"))):
+            for theme, folder in (("light", ""), ("dark", "themes/dark/")):
+                phone.set_theme(theme)
+                for st in states:
+                    expect_eq(phone.art_path(name, st), "gui/phone/{}{}_{}.png".format(folder, name, st), "{} {} {} art".format(theme, name, st))
+        phone.set_theme("light")
+        expect_eq(phone.art_path("apps/social/icon", "hover"), "gui/phone/apps/social/icon_hover.png", "the app icon has a hover state")
+        expect(not hasattr(phone.social, "glyph"), "the app draws its icon from art")
 
     # Saves from before a field existed fall back to class defaults.
     $ uid = s.post("lucy", "demo photo beach", comment_options=["Hi"], comments=[("max", "Yo")], notify=False)

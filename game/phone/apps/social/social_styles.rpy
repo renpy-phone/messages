@@ -1,5 +1,8 @@
 # Styles for the Social app. Like the framework styles, they are rebuilt when
 # the theme or text size changes, and games may override any of them.
+#
+# Button frames are art under gui/phone/social/ (themed files in
+# gui/phone/themes/<theme>/social/); borders are in art pixels at 1080p.
 
 init offset = -1
 
@@ -61,10 +64,10 @@ style phone_social_count_label is phone_subtext:
     layout "nobreak"
 
 style phone_social_follow_button is empty:
-    background phone.rounded("accent", "sm")
-    hover_background phone.rounded("text", "sm")
-    selected_background phone.rounded("surface_alt", "sm")
-    selected_hover_background phone.rounded("divider", "sm")
+    background phone.art_frame("social/follow_button", 8)
+    hover_background phone.art_frame("social/follow_button", 8, "hover")
+    selected_idle_background phone.art_frame("social/follow_button", 8, "selected_idle")
+    selected_hover_background phone.art_frame("social/follow_button", 8, "selected_hover")
     padding (phone.px(12), phone.px(9))
 
 style phone_social_follow_button_text is phone_default:
@@ -79,8 +82,8 @@ style phone_social_follow_button_text is phone_default:
 
 style phone_social_option_button is empty:
     xfill True
-    background phone.rounded("surface_alt", "md")
-    hover_background phone.rounded("accent", "md")
+    background phone.art_frame("social/option_button", 18)
+    hover_background phone.art_frame("social/option_button", 18, "hover")
     padding (phone.px(16), phone.px(12))
 
 style phone_social_option_button_text is phone_default:

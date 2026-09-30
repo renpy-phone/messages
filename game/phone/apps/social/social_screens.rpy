@@ -20,9 +20,10 @@ screen phone_social():
             button:
                 style "phone_social_header_button"
                 xalign 1.0
+                properties phone.art_layer_states("social/profile_ring", (phone.px(52), phone.px(52)), align=(0.5, 0.5))
                 action phone.Navigate("phone_social_profile", who=None)
                 alt _("Your profile")
-                add phone.avatar(None, phone.px(40))
+                add phone.avatar(None, phone.px(40)) align (0.5, 0.5)
 
         use phone_divider
 
@@ -80,20 +81,17 @@ screen phone_social_card(p, full=False):
                 hbox:
                     spacing phone.px(2)
 
-                    button:
+                    imagebutton:
                         style "phone_social_icon_button"
+                        properties phone.social_icon_states("social/like", phone.px(30))
                         action phone.SocialToggleLike(p.uid)
                         alt (_("Unlike") if p.liked else _("Like"))
-                        if p.liked:
-                            add phone.social_icon("heart", "social_like", phone.px(30))
-                        else:
-                            add phone.social_icon("heart_outline", "text", phone.px(30))
 
-                    button:
+                    imagebutton:
                         style "phone_social_icon_button"
+                        properties phone.social_icon_states("social/comment", phone.px(30))
                         action (NullAction() if full else phone.Navigate("phone_social_post", post=p.uid))
                         alt _("Comments")
-                        add phone.social_icon("comment", "text", phone.px(29))
 
             frame:
                 style "empty"

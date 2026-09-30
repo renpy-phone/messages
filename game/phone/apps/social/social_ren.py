@@ -23,11 +23,18 @@ init -920 python in phone:
 import store
 
 
-# Folder with the app's images, next to the framework's own image folder.
-social_asset_dir = (asset_dir[:-len("images/")] if asset_dir.endswith("images/") else asset_dir) + "apps/social/images/"
+# Art under gui/phone/ (placeholders from tools/art/social_art.rpy); lint
+# reports any that is missing. The like heart is outlined when idle and
+# filled when selected (liked).
+require_art(
+    "apps/social/icon",
+    "social/like",
+    "social/comment",
+    "social/profile_ring",
+    "social/follow_button",
+    "social/option_button",
+)
 
-cfg.themes["light"].setdefault("social_like", "#ed4956")
-cfg.themes["dark"].setdefault("social_like", "#ff3040")
 cfg.sounds.setdefault("social_post", None)
 cfg.sounds.setdefault("social_like", None)
 
@@ -176,8 +183,6 @@ class SocialApp(App):
     id = "social"
     name = _("Photogram")
     screen = "phone_social"
-    glyph = "◉"
-    color = "#c13584"
     order = 30
 
     CommentOption = CommentOption
@@ -404,10 +409,11 @@ def social_count(n):
 
 
 @memoized
-def social_icon(name, key, size):
-    """One of the app's white icons ("heart", "heart_outline", "comment"),
-    tinted. Built once per theme, text size and resolution."""
-    return Transform(tinted(social_asset_dir + name + ".png", key), xysize=(size, size))
+def social_icon_states(name, size):
+    """Imagebutton states of one of the app's icons ("social/like",
+    "social/comment"), `size` pixels square. Built once per theme, text size
+    and resolution."""
+    return art_states(name, (size, size))
 
 
 def social_card_width():
